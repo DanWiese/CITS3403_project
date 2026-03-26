@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Create Event</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    </head>
+    <body>
+        <div class="container-fluid">
+            <h1>Create a New Event</h1>
+            <form>
+                <div class="form-group">
+                    <label for="event name">Event Name:</label>
+                    <input type="text" class="form-control" id="event name">
+                </div>
+                <div class="form-group">
+                    <label for="location">Location:</label>
+                    <input type="text" class="form-control" id="location">
+                </div>
+
+                
+                <label for="date and time options">Date and Time:</label>
+                <fieldset class="form-group" id = "date and time options">
+                    <div>
+                        <label class="radio-inline"><input type="radio" name="single day" checked>Single Day</label>
+                        <label class="radio-inline"><input type="radio" name="multiple days">Multiple Days</label>
+                    </div>
+                    <div class="input-group" id="dates and times">
+                        <span class="input-group-addon"> From: </span>
+                        <input type="date" class="form-control" id="startdate">
+                        <input type="time" class="form-control" id="starttime">
+                        <span class="input-group-addon"> Until: </span>
+                        <input type="date" class="form-control" id="finishdate">
+                        <input type="time" class="form-control" id="finishtime">
+                    </div>
+                </fieldset>
+                <label for="tab checkboxes">Optional Event Tabs</label>
+                <div class="checkbox" id="tab checkboxes">
+                    <label><input type="checkbox" disabled>Polls</label>
+                    <label><input type="checkbox" disabled>Expenses</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Event Description:</label>
+                    <textarea class="form-control" rows="5" id="description"></textarea>
+                </div>
+
+                <div>
+                    <label class="radio-inline"><input type="radio" name="optradio" checked>Private Event</label>
+                    <label class="radio-inline"><input type="radio" name="optradio" disabled>Public Event</label>
+                </div>
+
+                <input type="submit" class="btn btn-success" value="Create">
+            </form>
+        </div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+    </body>
+</html>
