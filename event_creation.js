@@ -11,6 +11,13 @@ function singleDaySwitched() {
 }
 
 const newEventForm = document.getElementById("newEventForm");
+newEventForm.addEventListener("submit", timesValidation);
+
+function timesValidation(event) {
+    if (!validateTimes()) {
+        event.preventDefault();
+    }
+}
 
 function validateTimes() {
     const startDate = document.getElementById("startDate").value;
