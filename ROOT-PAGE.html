@@ -2,16 +2,25 @@
 <html lang="en">
 
 <head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" 
+    rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" 
+    crossorigin="anonymous">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>SHINDIG</title>
 
-    <style> h1 {color: Cyan; text-align: center; font-size: 5rem; 
-        font-style: italic}</style>
-    <style>.bg-wrap {position:fixed; inset:0; z-index:-1; overflow:hidden;}.bg-wrap 
-    img {position:absolute; inset:0; width:100%; height:100%; object-fit:cover; 
-    opacity:0; transition:opacity 1.2s ease;}.bg-wrap img.active{opacity:1;}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-..." crossorigin="anonymous">
+
+    <style>
+        h1 {color: deepskyblue; text-align: center; font-size: 5rem; font-style: italic;}
+        .bg-wrap {position: fixed; inset: 0; z-index: -1; overflow: hidden;}
+        .bg-wrap img {position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.2s ease;}
+        .bg-wrap img.active {opacity: 1;}
+        body {margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;}
+        .hero-title {position: relative; margin: auto; width: max(280px, min(65%, 720px)); background: rgba(255,255,255,0.92); border-radius: 14px; padding: 1.25rem 1.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.22); text-align: center; z-index: 2; backdrop-filter: blur(7px);}
+        .hero-title .hero-slogan {margin: 0.65rem 0 0; font-size: 1.25rem; color: #4d4d4d; font-weight: 500; letter-spacing: 0.02em;}
     </style>
 
     <style>
@@ -34,14 +43,14 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.22);
             text-align: center;
             z-index: 2;
-            backdrop-filter: blur(7px); /* optional glassy effect */
+            backdrop-filter: blur(7px); 
         }
 
         .hero-title h1 {
             margin: 0;
-            font-size: 4.5rem; /* adjust */
+            font-size: 4.5rem;
             font-style: italic;
-            color: deepskyblue;
+            color: #0d6efd;
         }
         
         .hero-title .hero-slogan {
@@ -52,22 +61,16 @@
             letter-spacing: 0.02em;
         }
 
-        #B1, #B2 {
+        .top-left-buttons {
             position: absolute;
             top: 1rem;
             left: 1rem;
-            padding: 0.72rem 1.1rem;
-            font-size: 1.1rem;
-            border-radius: 0.64rem;
-            border: 1px solid rgba(30, 144, 255, 0.9); 
-            background: deepskyblue;
-            color: #fff;
-            cursor: pointer;
             z-index: 5;
         }
 
-        #B2 {
-            left: calc(1rem + 120px);
+        .top-left-buttons .btn {
+            font-size: 1.1rem;
+            padding: 0.72rem 1.1rem;
         }
     </style>
 
@@ -80,15 +83,18 @@
         <img src="ImageFolder/Image3.jpg">
     </div>
 
-    <div class="hero-title">
-        <h1>SHINDIG</h1>
-        <p class="hero-slogan">YOUR GO TO EVENT PLANNING EXPERIENCE</p>
+    <div class="top-left-buttons">
+        <button id="B1" class="btn btn-primary btn-lg me-2">Log In</button>
+        <button id="B2" class="btn btn-outline-primary btn-lg">Sign Up</button>
     </div>
-   
-    <script src="slideshowbackground.js"></script>
 
-    <button id = "B1">Log In</button>
-    <button id = "B2">Sign Up</button>
+    <div class="hero-title">
+        <h1 class="display-4">SHINDIG</h1>
+        <p class="hero-slogan lead">YOUR GO TO EVENT PLANNING EXPERIENCE</p>
+    </div>
+
+    <script src="slideshowbackground.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
     
 
 
