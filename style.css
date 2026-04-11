@@ -1,0 +1,219 @@
+:root {
+    --primary-color: #1e3a8a;        /* deep blue */
+    --secondary-color: #3b82f6;      /* bright blue */
+    --accent-color: #f472b6;         /* soft pink accent */
+    --background-light: #0f172a;     /* dark navy background */
+    --background-dark: #020617;      /* near black */
+    --text-dark: #e2e8f0;            /* light text */
+    --text-light: #94a3b8;           /* muted text */
+    --white: #1e293b;                /* card background (dark) */
+    --shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    --border-radius: 14px;
+}
+
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at top, #1e3a8a, #020617);
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    padding: 2rem;
+    color: white;
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+header h1 {
+    font-size: 2rem;
+    letter-spacing: 1px;
+}
+
+header p {
+    opacity: 0.8;
+}
+
+/* Navigation */
+nav {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 1rem 2rem;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+nav a {
+    color: var(--text-light);
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+nav a:hover {
+    color: var(--secondary-color);
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 2rem;
+}
+
+/* Cards */
+.card {
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(12px);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
+    transition: 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+.card h2 {
+    color: var(--secondary-color);
+    margin-bottom: 1rem;
+}
+
+/* Vacation Grid */
+.vacation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.vacation-card {
+    background: rgba(30, 41, 59, 0.9);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: 0.3s;
+}
+
+.vacation-card:hover {
+    transform: scale(1.03);
+}
+
+.vacation-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    filter: brightness(0.85);
+}
+
+.vacation-card .content {
+    padding: 1rem;
+}
+
+.vacation-card h3 {
+    color: white;
+}
+
+.vacation-card .location {
+    color: var(--text-light);
+}
+
+.vacation-card .price {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.7rem 1.4rem;
+    background: linear-gradient(135deg, #3b82f6, #1e3a8a);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px #3b82f6;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #f472b6, #ec4899);
+}
+
+.btn-secondary:hover {
+    box-shadow: 0 0 10px #f472b6;
+}
+
+/* Forms */
+.form-group input,
+.form-group select,
+.form-group textarea {
+    background: #020617;
+    color: white;
+    border: 1px solid #334155;
+    border-radius: var(--border-radius);
+}
+
+.form-group input:focus {
+    border-color: var(--secondary-color);
+}
+
+/* Participants */
+.participant-tag {
+    background: linear-gradient(135deg, #3b82f6, #1e3a8a);
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+/* Budget */
+.budget-summary {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.budget-amount {
+    font-size: 2.2rem;
+    font-weight: bold;
+}
+
+/* Footer */
+footer {
+    background: #020617;
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-light);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    nav ul {
+        flex-direction: column;
+    }
+
+    .budget-summary {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+}
