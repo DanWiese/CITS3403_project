@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Dashboard</title>
+    <style>
+        :root {
+            --bg: #f6f8ff;
+            --surface: #ffffff;
+            --surface-soft: #f3f5ff;
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --accent: #2563eb;
+            --radius: 28px;
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            position: relative;
+            padding-top: 96px;
+        }
+
+        .page-shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+        }
+
+        .brand-block {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 1;
+        }
+
+        .brand-icon {
+            width: 48px;
+            height: 48px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 18px;
+            background: #5c3dff;
+            color: white;
+            font-size: 1.25rem;
+            box-shadow: 0 12px 28px rgba(92, 61, 255, 0.18);
+        }
+
+        .brand-name {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .back-link,
+        .modify-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .page-header {
+            background: var(--surface);
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            border-radius: var(--radius);
+            padding: 32px;
+            box-shadow: var(--shadow);
+            margin-top: 16px;
+        }
+
+        .header-layout {
+            display: grid;
+            grid-template-columns: minmax(240px, 280px) 1fr;
+            gap: 24px;
+            align-items: start;
+            margin-top: 16px;
+        }
+
+        .participants-panel {
+            background: rgba(239, 246, 255, 0.9);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 28px;
+            padding: 24px;
+            min-height: 220px;
+        }
+
+        .participants-panel h3 {
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: 0.03em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .participant-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .participant-pill {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 18px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .participant-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #dde5ff;
+            color: var(--accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .page-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 880px) {
+            .header-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .modify-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 700;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            padding: 14px 20px;
+            border-radius: 999px;
+            background: #eff6ff;
+        }
+
+        .modify-link::after {
+            content: '→';
+            display: inline-block;
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+
+        .event-title {
+            margin: 0 0 8px;
+            font-size: clamp(2rem, 2.7vw, 3rem);
+            line-height: 1.05;
+        }
+
+        .tabs {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 24px 32px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .tab-button {
+            border: none;
+            border-radius: 999px;
+            padding: 12px 18px;
+            background: var(--surface);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-weight: 700;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+        }
+
+        .tab-button.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .tab-button:hover {
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--accent);
+        }
+
+        @media (max-width: 880px) {
+            .header-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            box-shadow: var(--shadow);
+            padding: 28px;
+            margin: 0 auto 24px;
+            max-width: 1180px;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 0 22px;
+        }
+
+        .section-heading h2 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .button-primary {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .option-list {
+            display: grid;
+            gap: 18px;
+        }
+
+        .option-item {
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 18px;
+            align-items: center;
+            background: var(--surface-soft);
+        }
+
+        .option-item.selected {
+            border-color: var(--accent);
+            background: #eff6ff;
+        }
+
+        .option-info {
+            display: grid;
+            gap: 6px;
+        }
+
+        .option-info p {
+            margin: 0;
+        }
+
+        .option-title {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .option-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .vote-pill {
+            min-width: 72px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: white;
+            border: 1px solid var(--border);
+            font-weight: 700;
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .vote-pill span {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .vote-button,
+        .finalize-button {
+            border: none;
+            border-radius: 14px;
+            padding: 10px 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .vote-button {
+            background: white;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .finalize-button {
+            background: #16a34a;
+            color: white;
+        }
+
+        .placeholder {
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="brand-block">
+        <span class="brand-icon">📅</span>
+        <span class="brand-name">Shindig</span>
+    </div>
+    <div class="page-shell">
+        <a href="#" class="back-link">← Back to Dashboard</a>
+        <div class="header-layout">
+            <div class="participants-panel">
+                <h3>Participants</h3>
+                <div class="participant-list">
+                    <div class="participant-pill"><span class="participant-avatar">AL</span>Alex</div>
+                    <div class="participant-pill"><span class="participant-avatar">BE</span>Ben</div>
+                    <div class="participant-pill"><span class="participant-avatar">CI</span>Ciara</div>
+                    <div class="participant-pill"><span class="participant-avatar">+2</span>More</div>
+                </div>
+            </div>
+            <div class="page-header">
+                <div class="page-header-top">
+                    <div>
+                        <h1 class="event-title">Event Title</h1>
+                    </div>
+                    <a href="#" class="modify-link">Modify Event</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="tabs">
+        <button class="tab-button active" onclick="openTab('overview', this)">🧭 Overview</button>
+        <button class="tab-button" onclick="openTab('voting', this)">📅 Voting</button>
+        <button class="tab-button" onclick="openTab('discussion', this)">💬 Discussion</button>
+        <button class="tab-button" onclick="openTab('expenses', this)">💲 Expenses</button>
+        <button class="tab-button" onclick="openTab('checklist', this)">✅ Checklist</button>
+        <button class="tab-button" onclick="openTab('stays', this)">🏠 Stays</button>
+    </div>
+    <div id="overview" class="card tab-content active">
+            <div class="section-heading">
+                <h2>Overview</h2>
+            </div>
+            <p class="placeholder">See event details and updates here.</p>
+        </div>
+    <div id="voting" class="card tab-content">
+            <div class="section-heading">
+                <h2>Date Options</h2>
+                <button class="button-primary">+ Suggest Date</button>
+            </div>
+            <div class="option-list">
+                <div class="option-item selected">
+                    <div class="option-info">
+                        <p class="option-title">Option 1</p>
+                    </div>
+                    <div class="option-actions">
+                        <div class="vote-pill">#No of Votes <span>votes</span></div>
+                        <button class="vote-button">👍 Voted</button>
+                        <button class="finalize-button">Finalise</button>
+                    </div>
+                </div>
+                <div class="option-item">
+                    <div class="option-info">
+                        <p class="option-title">Option 2</p>
+                    </div>
+                    <div class="option-actions">
+                        <div class="vote-pill">#No of Votes <span>votes</span></div>
+                        <button class="vote-button">👍 Vote</button>
+                        <button class="finalize-button">Finalise</button>
+                    </div>
+                </div>
+                <div class="option-item">
+                    <div class="option-info">
+                        <p class="option-title">Option 3</p>
+                    </div>
+                    <div class="option-actions">
+                        <div class="vote-pill">#No of Votes <span>votes</span></div>
+                        <button class="vote-button">👍 Vote</button>
+                        <button class="finalize-button">Finalise</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="expenses" class="card tab-content">
+            <div class="section-heading">
+                <h2>Expenses</h2>
+                <button class="button-primary">+ Add Expense</button>
+            </div>
+            <p class="placeholder">Track trip costs, split bills, and view shared expenses here.</p>
+        </div>
+
+        <div id="checklist" class="card tab-content">
+            <div class="section-heading">
+                <h2>Checklist</h2>
+                <button class="button-primary">+ Add Item</button>
+            </div>
+            <p class="placeholder">Create packing, activity, and booking checklists for your trip.</p>
+        </div>
+
+        <div id="discussion" class="card tab-content">
+            <div class="section-heading">
+                <h2>Discussion</h2>
+                <button class="button-primary">+ New Message</button>
+            </div>
+            <p class="placeholder">Chat with participants, share ideas, and keep the conversation in one place.</p>
+        </div>
+
+        <div id="itinerary" class="card tab-content">
+            <div class="section-heading">
+                <h2>Itinerary</h2>
+                <button class="button-primary">+ Add Stop</button>
+            </div>
+            <p class="placeholder">Plan daily activities, travel routes, and points of interest.</p>
+        </div>
+
+        <div id="stays" class="card tab-content">
+            <div class="section-heading">
+                <h2>Stays</h2>
+                <button class="button-primary">+ Add Accommodation</button>
+            </div>
+            <p class="placeholder">Manage lodging options, bookings, and shared accommodations.</p>
+        </div>
+
+    </div>
+     <script>
+        function openTab(tabName, button) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            button.classList.add('active');
+        }
+    </script>
+
+</body>
+</html>
