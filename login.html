@@ -141,6 +141,13 @@ function toggleAuth() {
     document.getElementById('login-section').classList.toggle('hidden');
     document.getElementById('signup-section').classList.toggle('hidden');
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash === '#signup-section') {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('signup-section').classList.remove('hidden');
+    }
+});
 </script>
 
 </body>
