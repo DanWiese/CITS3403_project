@@ -1,0 +1,109 @@
+/* ===== ROOT ===== */
+:root {
+    --primary-color: #1e3a8a;
+    --secondary-color: #3b82f6;
+    --accent-color: #f472b6;
+
+    --background-light: #0f172a;
+    --background-dark: #020617;
+
+    --text-main: #e2e8f0;   /* MAIN LIGHT TEXT */
+    --text-muted: #94a3b8;  /* SECONDARY TEXT */
+
+    --card-bg: #1e293b;
+
+    --shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    --border-radius: 14px;
+}
+
+/* ===== RESET ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ===== BODY ===== */
+body {
+    font-family: 'Poppins', 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at top, #1e3a8a, #020617);
+    color: var(--text-main); 
+    line-height: 1.6;
+}
+
+/* ===== TEXT ===== */
+p {
+    color: var(--text-muted);
+}
+
+/* ===== LINKS ===== */
+a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* ===== CARD ===== */
+.card {
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(12px);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    transition: 0.3s;
+    color: var(--text-main); 
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+/* ===== BUTTON ===== */
+.btn {
+    padding: 0.7rem 1.4rem;
+    background: linear-gradient(135deg, #3b82f6, #1e3a8a);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px #3b82f6;
+}
+
+/* ===== INPUTS ===== */
+.form-control {
+    background: #020617;
+    color: var(--text-main);
+    border: 1px solid #334155;
+    border-radius: var(--border-radius);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+}
+
+.form-control:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 8px rgba(59,130,246,0.5);
+}
+
+/* ===== CONTAINER ===== */
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 2rem;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    nav ul {
+        flex-direction: column;
+    }
+}
