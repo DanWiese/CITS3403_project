@@ -12,8 +12,8 @@
             <h1>Create a New Event</h1>
             <form action="/" id="newEventForm">
                 <div class="form-group">
-                    <label for="event name">Event Name:</label>
-                    <input type="text" class="form-control" id="event name" required>
+                    <label for="eventName">Event Name:</label>
+                    <input type="text" class="form-control" id="eventName" required>
                 </div>
                 
                 <div class="form-group">
@@ -21,8 +21,8 @@
                     <input type="text" class="form-control" id="location">
                 </div>
 
-                <label for="date and time options">Date and Time:</label>
-                <fieldset class="form-group" id = "date and time options">
+                <label for="dateAndTimeOptions">Date and Time:</label>
+                <fieldset class="form-group" id="dateAndTimeOptions">
                     <div class="form-check form-switch">
                         <label class="form-check-label" for="singleDay">Single Day Event</label>
                         <input class="form-check-input" type="checkbox" role="switch" id="singleDay">
@@ -37,19 +37,19 @@
                     </div>
                 </fieldset>
 
-                <label for="tab checkboxes">Optional Event Tabs:</label>
-                <fieldset id = "tab checkboxes">
+                <label for="tabCheckboxes">Optional Event Tabs:</label>
+                <fieldset id="tabCheckboxes">
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="polls checkbox" value="polls">
-                        <label class="form-check-label" for="polls checkbox">Polls</label>
+                        <input class="form-check-input" type="checkbox" id="pollsCheckbox" value="polls">
+                        <label class="form-check-label" for="pollsCheckbox">Polls</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="expenses checkbox" value="expenses" disabled>
-                        <label class="form-check-label" for="expenses checkbox">Expenses</label>
+                        <input class="form-check-input" type="checkbox" id="expensesCheckbox" value="expenses" disabled>
+                        <label class="form-check-label" for="expensesCheckbox">Expenses</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="discussion checkbox" value="discussion" disabled>
-                        <label class="form-check-label" for="discussion checkbox">Discussion</label>
+                        <input class="form-check-input" type="checkbox" id="discussionCheckbox" value="discussion" disabled>
+                        <label class="form-check-label" for="discussionCheckbox">Discussion</label>
                     </div>
                 </fieldset>
 
