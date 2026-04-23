@@ -107,3 +107,14 @@ a:hover {
         flex-direction: column;
     }
 }
+
+.error-message,
+.alert,
+.validation-message {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
