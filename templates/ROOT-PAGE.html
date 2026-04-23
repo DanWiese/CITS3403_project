@@ -41,12 +41,13 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.22);
             text-align: center;
             z-index: 2;
-            backdrop-filter: blur(7px); 
+            backdrop-filter: blur(7px);
+            container-type: inline-size;
         }
 
         .hero-title h1 {
             margin: 0;
-            font-size: 4.5rem;
+            font-size: clamp(2rem, 14cqw, 4.5rem);
             font-style: italic;
             color: #0d6efd;
         }
@@ -76,14 +77,14 @@
 
 <body>
     <div class="bg-wrap">
-        <img src="ImageFolder/Image1.jpg" class="active">
-        <img src="ImageFolder/Image2.jpg">
-        <img src="ImageFolder/Image3.jpg">
+        <img src="{{ url_for('static', filename='ImageFolder/Image1.jpg') }}" class="active">
+        <img src="{{ url_for('static', filename='ImageFolder/Image2.jpg') }}">
+        <img src="{{ url_for('static', filename='ImageFolder/Image3.jpg') }}">
     </div>
 
     <div class="top-left-buttons">
-        <button id="B1" class="btn btn-primary btn-lg me-2">Log In</button>
-        <button id="B2" class="btn btn-outline-primary btn-lg">Sign Up</button>
+        <a id="B1" class="btn btn-primary btn-lg me-2" href="/login">Log In</a>
+        <a id="B2" class="btn btn-outline-primary btn-lg" href="/login">Sign Up</a>
     </div>
 
     <div class="hero-title">
@@ -91,10 +92,9 @@
         <p class="hero-slogan lead">YOUR GO TO EVENT PLANNING EXPERIENCE</p>
     </div>
 
-    <script src="slideshowbackground.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='slideshowbackground.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
     
-
 
 </body>
 </html>
