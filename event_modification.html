@@ -3,14 +3,15 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Create Event</title>
+        <title>Modify Event</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
         <link rel="stylesheet" href="style.css" type="text/css">
+        <script src="jquery-3.7.1.min.js"></script>
     </head>
     <body>
         <div class="container-fluid">
-            <h1>Create a New Event</h1>
-            <form action="/" id="newEventForm">
+            <h1>Modify Event</h1>
+            <form action="/" id="modifyEventForm">
                 <div class="form-group">
                     <label for="event name">Event Name:</label>
                     <input type="text" class="form-control" id="event name" required>
@@ -63,10 +64,10 @@
                     <label class="radio-inline"><input type="radio" name="optradio" disabled>Public Event</label>
                 </div>
 
-                <input type="submit" class="btn btn-success" value="Create">
+                <input type="submit" class="btn btn-success" value="Confirm">
             </form>
         </div>
-        <script src="event_creation.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+        <script src="event_modification.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
     </body>
 </html>

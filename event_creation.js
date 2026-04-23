@@ -41,4 +41,3 @@ function validateTimes() {
     }
     return true;
 }
-
