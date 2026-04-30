@@ -220,6 +220,22 @@
             cursor: pointer;
         }
 
+        .button-secondary {
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .participants-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .option-list {
             display: grid;
             gap: 18px;
@@ -454,11 +470,14 @@
         <div id="participants" class="card tab-content {% if active_tab == 'participants' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Participants</h2>
-                <form method="post" action="{{ url_for('join_event', event_id=event.id) }}">
-                    <button class="button-primary" type="submit">
-                        {% if current_participant %}Joined{% else %}Join Event{% endif %}
-                    </button>
-                </form>
+                <div class="participants-actions">
+                    <button class="button-secondary" type="button" onclick="shareEventInvite()">Add Participant</button>
+                    <form method="post" action="{{ url_for('join_event', event_id=event.id) }}">
+                        <button class="button-primary" type="submit">
+                            {% if current_participant %}Joined{% else %}Join Event{% endif %}
+                        </button>
+                    </form>
+                </div>
             </div>
             {% if participants %}
             <div class="participant-list">
@@ -661,6 +680,35 @@
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
             button.classList.add('active');
+        }
+
+        async function shareEventInvite() {
+            const inviteUrl = window.location.href;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Join my event on Shindig',
+                        text: 'Use this link to join the event:',
+                        url: inviteUrl,
+                    });
+                    return;
+                } catch (error) {
+                    // Fall back to clipboard if share is cancelled or unsupported in this context.
+                }
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(inviteUrl);
+                    alert('Invite link copied. Share it with participants.');
+                    return;
+                } catch (error) {
+                    // Fall through to prompt fallback.
+                }
+            }
+
+            prompt('Copy this invite link:', inviteUrl);
         }
     </script>
 
