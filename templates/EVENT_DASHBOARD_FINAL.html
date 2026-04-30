@@ -416,6 +416,123 @@
             white-space: pre-wrap;
             line-height: 1.5;
         }
+
+        .join-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.58);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .join-modal.show {
+            display: flex;
+        }
+
+        .join-modal-content {
+            background: white;
+            border-radius: 24px;
+            max-width: 460px;
+            width: 100%;
+            padding: 28px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+            text-align: center;
+        }
+
+        .join-modal-content h2 {
+            margin: 0 0 12px;
+            font-size: 1.4rem;
+        }
+
+        .join-modal-content p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .join-modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .join-modal-actions button {
+            flex: 1;
+            border: none;
+            border-radius: 14px;
+            padding: 12px 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-cancel {
+            background: #e5e7eb;
+            color: var(--text);
+        }
+
+        .btn-request {
+            background: var(--accent);
+            color: white;
+        }
+
+        .pending-requests {
+            margin-bottom: 22px;
+            padding: 16px;
+            border-radius: 18px;
+            background: #fffbeb;
+            border: 1px solid #facc15;
+        }
+
+        .pending-requests h3 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #92400e;
+        }
+
+        .request-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            background: white;
+            border-radius: 14px;
+            margin-bottom: 10px;
+        }
+
+        .request-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .request-user {
+            font-weight: 700;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .request-actions button {
+            border: none;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-approve {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-reject {
+            background: #ef4444;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -430,6 +547,17 @@
             </svg>
         </span>
         <span class="brand-name">Shindig</span>
+    </div>
+
+    <div id="joinModal" class="join-modal{% if show_join_modal %} show{% endif %}">
+        <div class="join-modal-content">
+            <h2>Request to join</h2>
+            <p>This is a private event. Send a request to the host and wait for approval.</p>
+            <div class="join-modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeJoinModal()">Cancel</button>
+                <button type="button" class="btn-request" onclick="submitJoinRequest()">Send Request</button>
+            </div>
+        </div>
     </div>
 
     <div class="page-shell">
@@ -470,15 +598,41 @@
         <div id="participants" class="card tab-content {% if active_tab == 'participants' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Participants</h2>
+                {% if event_is_owner %}
                 <div class="participants-actions">
                     <button class="button-secondary" type="button" onclick="shareEventInvite()">Add Participant</button>
                     <form method="post" action="{{ url_for('join_event', event_id=event.id) }}">
-                        <button class="button-primary" type="submit">
-                            {% if current_participant %}Joined{% else %}Join Event{% endif %}
-                        </button>
+                        <button class="button-primary" type="submit">Joined</button>
                     </form>
                 </div>
+                {% elif not event.is_private or current_participant %}
+                <form method="post" action="{{ url_for('join_event', event_id=event.id) }}">
+                    <button class="button-primary" type="submit">
+                        {% if current_participant %}Joined{% else %}Join Event{% endif %}
+                    </button>
+                </form>
+                {% endif %}
             </div>
+
+            {% if event_is_owner and pending_requests %}
+            <div class="pending-requests">
+                <h3>Pending Join Requests</h3>
+                {% for req in pending_requests %}
+                <div class="request-item">
+                    <span class="request-user">{{ req.user.username }}</span>
+                    <div class="request-actions">
+                        <form method="post" action="{{ url_for('approve_join_request', event_id=event.id, request_id=req.id) }}">
+                            <button type="submit" class="btn-approve">Approve</button>
+                        </form>
+                        <form method="post" action="{{ url_for('reject_join_request', event_id=event.id, request_id=req.id) }}">
+                            <button type="submit" class="btn-reject">Reject</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% if participants %}
             <div class="participant-list">
                 {% for participant in participants %}
@@ -586,7 +740,7 @@
             {% endif %}
         </div>
 
-        <div id="discussion" class="card tab-content {% if active_tab == 'discussion' %}active{% endif %}" data-event-id="{{ event.id }}">
+        <div id="discussion" class="card tab-content {% if active_tab == 'discussion' %}active{% endif %}" data-event-id="{{ event.id }}" data-share-url="{{ share_url or '' }}" data-invite-token="{{ invite_token or '' }}" data-request-url="{{ url_for('request_join_event', token=invite_token) if invite_token else '' }}">
             <div class="section-heading">
                 <h2>Discussion</h2>
                 <form id="discussionForm" method="post" action="{{ url_for('add_discussion_message', event_id=event.id) }}" class="inline-form" style="margin-bottom: 0;">
@@ -622,6 +776,7 @@
         </div>
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='inviteparticipants.js') }}"></script>
     <script>
         // Get event ID from data attribute (avoids template syntax in JavaScript)
         const currentEventId = parseInt(document.getElementById('discussion').dataset.eventId, 10);
@@ -680,35 +835,6 @@
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
             button.classList.add('active');
-        }
-
-        async function shareEventInvite() {
-            const inviteUrl = "{{ share_url }}";
-
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: 'Join my event on Shindig',
-                        text: 'Use this link to join the event:',
-                        url: inviteUrl,
-                    });
-                    return;
-                } catch (error) {
-                    // Fall back to clipboard if share is cancelled or unsupported in this context.
-                }
-            }
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                try {
-                    await navigator.clipboard.writeText(inviteUrl);
-                    alert('Invite link copied. Share it with participants.');
-                    return;
-                } catch (error) {
-                    // Fall through to prompt fallback.
-                }
-            }
-
-            prompt('Copy this invite link:', inviteUrl);
         }
     </script>
 

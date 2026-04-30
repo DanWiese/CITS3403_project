@@ -5,9 +5,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import json
 import os
+import secrets
 import socket
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+from sqlalchemy.exc import IntegrityError
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -140,6 +142,27 @@ class EventDiscussionMessage(db.Model):
     event = db.relationship('Event', backref=db.backref('discussion_messages', lazy=True, cascade='all, delete-orphan'))
     user = db.relationship('User')
 
+
+class EventInviteToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    active = db.Column(db.Boolean, default=True, nullable=False)
+
+    event = db.relationship('Event', backref=db.backref('invite_tokens', lazy=True, cascade='all, delete-orphan'))
+
+
+class EventJoinRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    event = db.relationship('Event', backref=db.backref('join_requests', lazy=True, cascade='all, delete-orphan'))
+    user = db.relationship('User')
+
 # Create tables
 with app.app_context():
     db.create_all()
@@ -165,6 +188,74 @@ def format_awst(dt):
 @app.template_filter('awst_datetime')
 def awst_datetime_filter(value):
     return format_awst(value)
+
+
+def get_or_create_event_invite(event):
+    invite = EventInviteToken.query.filter_by(event_id=event.id, active=True).order_by(EventInviteToken.created_at.desc()).first()
+    if invite is not None:
+        return invite
+
+    while True:
+        token = secrets.token_urlsafe(16)
+        invite = EventInviteToken(event_id=event.id, token=token)
+        db.session.add(invite)
+        try:
+            db.session.commit()
+            return invite
+        except IntegrityError:
+            db.session.rollback()
+
+
+def render_event_dashboard(event, active_tab='overview', allow_invite_access=False, invite_token=None):
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    is_owner = event.user_id == session['user_id']
+
+    if event.is_private and not (is_owner or participant or allow_invite_access):
+        abort(403)
+
+    participants = EventParticipant.query.filter_by(event_id=event.id).order_by(EventParticipant.created_at.asc()).all()
+    vote_options = EventVoteOption.query.filter_by(event_id=event.id).order_by(EventVoteOption.created_at.asc()).all()
+    expenses = EventExpense.query.filter_by(event_id=event.id).order_by(EventExpense.created_at.asc()).all()
+    checklist_items = EventChecklistItem.query.filter_by(event_id=event.id).order_by(EventChecklistItem.created_at.asc()).all()
+    discussion_messages = EventDiscussionMessage.query.filter_by(event_id=event.id).order_by(EventDiscussionMessage.created_at.desc()).all()
+    expense_total = sum(expense.amount for expense in expenses)
+
+    user_vote = None
+    if vote_options:
+        user_vote = EventVote.query.join(EventVoteOption).filter(
+            EventVote.user_id == session['user_id'],
+            EventVoteOption.event_id == event.id
+        ).first()
+
+    pending_requests = []
+    if is_owner:
+        pending_requests = EventJoinRequest.query.filter_by(event_id=event.id, status='pending').order_by(EventJoinRequest.created_at.asc()).all()
+
+    invite_link = None
+    if is_owner:
+        invite = get_or_create_event_invite(event)
+        invite_token = invite.token
+        invite_link = get_share_url(f'/invite/{invite_token}')
+
+    return render_template(
+        'EVENT_DASHBOARD_FINAL.html',
+        username=session.get('username'),
+        event=event,
+        participants=participants,
+        vote_options=vote_options,
+        expenses=expenses,
+        expense_total=expense_total,
+        checklist_items=checklist_items,
+        discussion_messages=discussion_messages,
+        current_participant=participant,
+        current_vote=user_vote,
+        active_tab=active_tab,
+        share_url=invite_link,
+        invite_token=invite_token,
+        show_join_modal=allow_invite_access and event.is_private and not is_owner and participant is None,
+        pending_requests=pending_requests,
+        event_is_owner=is_owner,
+    )
 
 # ============ ROUTES ============
 
@@ -240,20 +331,35 @@ def signup():
 def dashboard():
     """Protected dashboard page"""
     user_id = session['user_id']
-    events = Event.query.filter_by(user_id=user_id).order_by(Event.start_datetime.asc()).all()
+    owned_events = Event.query.filter_by(user_id=user_id).all()
+    joined_events = (
+        Event.query
+        .join(EventParticipant, Event.id == EventParticipant.event_id)
+        .filter(EventParticipant.user_id == user_id, Event.user_id != user_id)
+        .all()
+    )
+
+    events_by_id = {}
+    for event in owned_events + joined_events:
+        event.is_owner = event.user_id == user_id
+        events_by_id[event.id] = event
+
+    events = sorted(events_by_id.values(), key=lambda event: event.start_datetime)
 
     now = datetime.utcnow()
     upcoming_count = sum(1 for event in events if event.start_datetime >= now)
     past_count = sum(1 for event in events if event.end_datetime < now)
 
-    rsvp_rows = (
-        db.session.query(EventParticipant.event_id, db.func.count(EventParticipant.id))
-        .join(Event, Event.id == EventParticipant.event_id)
-        .filter(Event.user_id == user_id, EventParticipant.user_id != user_id)
-        .group_by(EventParticipant.event_id)
-        .all()
-    )
-    event_rsvp_counts = {event_id: count for event_id, count in rsvp_rows}
+    visible_event_ids = list(events_by_id.keys())
+    event_rsvp_counts = {}
+    if visible_event_ids:
+        rsvp_rows = (
+            db.session.query(EventParticipant.event_id, db.func.count(EventParticipant.id))
+            .filter(EventParticipant.event_id.in_(visible_event_ids), EventParticipant.user_id != user_id)
+            .group_by(EventParticipant.event_id)
+            .all()
+        )
+        event_rsvp_counts = {event_id: count for event_id, count in rsvp_rows}
     total_rsvps = sum(event_rsvp_counts.values())
 
     stats = {
@@ -277,41 +383,16 @@ def dashboard():
 def event_dashboard(event_id):
     """Event-specific dashboard page"""
     event = Event.query.get_or_404(event_id)
-    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
-    if event.is_private and event.user_id != session['user_id'] and not participant:
-        abort(403)
-
-    participants = EventParticipant.query.filter_by(event_id=event.id).order_by(EventParticipant.created_at.asc()).all()
-    vote_options = EventVoteOption.query.filter_by(event_id=event.id).order_by(EventVoteOption.created_at.asc()).all()
-    expenses = EventExpense.query.filter_by(event_id=event.id).order_by(EventExpense.created_at.asc()).all()
-    checklist_items = EventChecklistItem.query.filter_by(event_id=event.id).order_by(EventChecklistItem.created_at.asc()).all()
-    discussion_messages = EventDiscussionMessage.query.filter_by(event_id=event.id).order_by(EventDiscussionMessage.created_at.desc()).all()
-    expense_total = sum(expense.amount for expense in expenses)
-
-    user_vote = None
-    if vote_options:
-        user_vote = EventVote.query.join(EventVoteOption).filter(
-            EventVote.user_id == session['user_id'],
-            EventVoteOption.event_id == event.id
-        ).first()
-
     active_tab = request.args.get('tab', 'overview')
-    share_url = get_share_url(f'/event-dashboard/{event_id}')
-    return render_template(
-        'EVENT_DASHBOARD_FINAL.html',
-        username=session.get('username'),
-        event=event,
-        participants=participants,
-        vote_options=vote_options,
-        expenses=expenses,
-        expense_total=expense_total,
-        checklist_items=checklist_items,
-        discussion_messages=discussion_messages,
-        current_participant=participant,
-        current_vote=user_vote,
-        active_tab=active_tab,
-        share_url=share_url,
-    )
+    return render_event_dashboard(event, active_tab=active_tab)
+
+
+@app.route('/invite/<string:token>')
+@login_required
+def invite_event(token):
+    invite = EventInviteToken.query.filter_by(token=token, active=True).first_or_404()
+    active_tab = request.args.get('tab', 'overview')
+    return render_event_dashboard(invite.event, active_tab=active_tab, allow_invite_access=True, invite_token=token)
 
 
 @app.route('/events/new')
@@ -405,6 +486,60 @@ def join_event(event_id):
         new_participant = EventParticipant(event_id=event.id, user_id=session['user_id'])
         db.session.add(new_participant)
         db.session.commit()
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='participants'))
+
+
+@app.route('/invite/<string:token>/request-join', methods=['POST'])
+@login_required
+def request_join_event(token):
+    invite = EventInviteToken.query.filter_by(token=token, active=True).first_or_404()
+    event = invite.event
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if participant or event.user_id == session['user_id']:
+        return jsonify({'success': False, 'message': 'You are already a participant.'}), 400
+
+    existing_request = EventJoinRequest.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if existing_request and existing_request.status == 'pending':
+        return jsonify({'success': False, 'message': 'Join request already pending.'}), 400
+
+    if existing_request is None:
+        existing_request = EventJoinRequest(event_id=event.id, user_id=session['user_id'], status='pending')
+        db.session.add(existing_request)
+    else:
+        existing_request.status = 'pending'
+
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Request sent to host.'}), 200
+
+
+@app.route('/event-dashboard/<int:event_id>/join-requests/<int:request_id>/approve', methods=['POST'])
+@login_required
+def approve_join_request(event_id, request_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != session['user_id']:
+        abort(403)
+
+    join_request = EventJoinRequest.query.filter_by(id=request_id, event_id=event.id).first_or_404()
+    join_request.status = 'approved'
+
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=join_request.user_id).first()
+    if participant is None:
+        db.session.add(EventParticipant(event_id=event.id, user_id=join_request.user_id))
+
+    db.session.commit()
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='participants'))
+
+
+@app.route('/event-dashboard/<int:event_id>/join-requests/<int:request_id>/reject', methods=['POST'])
+@login_required
+def reject_join_request(event_id, request_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != session['user_id']:
+        abort(403)
+
+    join_request = EventJoinRequest.query.filter_by(id=request_id, event_id=event.id).first_or_404()
+    join_request.status = 'rejected'
+    db.session.commit()
     return redirect(url_for('event_dashboard', event_id=event.id, tab='participants'))
 
 
