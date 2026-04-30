@@ -183,8 +183,37 @@ def signup():
 @login_required
 def dashboard():
     """Protected dashboard page"""
-    events = Event.query.filter_by(user_id=session['user_id']).order_by(Event.start_datetime.asc()).all()
-    return render_template('dashboard.html', username=session.get('username'), events=events)
+    user_id = session['user_id']
+    events = Event.query.filter_by(user_id=user_id).order_by(Event.start_datetime.asc()).all()
+
+    now = datetime.utcnow()
+    upcoming_count = sum(1 for event in events if event.start_datetime >= now)
+    past_count = sum(1 for event in events if event.end_datetime < now)
+
+    rsvp_rows = (
+        db.session.query(EventParticipant.event_id, db.func.count(EventParticipant.id))
+        .join(Event, Event.id == EventParticipant.event_id)
+        .filter(Event.user_id == user_id, EventParticipant.user_id != user_id)
+        .group_by(EventParticipant.event_id)
+        .all()
+    )
+    event_rsvp_counts = {event_id: count for event_id, count in rsvp_rows}
+    total_rsvps = sum(event_rsvp_counts.values())
+
+    stats = {
+        'upcoming': upcoming_count,
+        'past': past_count,
+        'rsvp': total_rsvps,
+        'total': len(events),
+    }
+
+    return render_template(
+        'dashboard.html',
+        username=session.get('username'),
+        events=events,
+        stats=stats,
+        event_rsvp_counts=event_rsvp_counts,
+    )
 
 
 @app.route('/event-dashboard/<int:event_id>')

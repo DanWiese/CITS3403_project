@@ -141,7 +141,7 @@
         </svg>
       </div>
       <div>
-        <div class="stat-num">3</div>
+        <div class="stat-num">{{ stats.upcoming }}</div>
         <div class="stat-label">Upcoming</div>
       </div>
     </div>
@@ -154,7 +154,7 @@
         </svg>
       </div>
       <div>
-        <div class="stat-num">1</div>
+        <div class="stat-num">{{ stats.past }}</div>
         <div class="stat-label">Past Events</div>
       </div>
     </div>
@@ -167,7 +167,7 @@
         </svg>
       </div>
       <div>
-        <div class="stat-num">0</div>
+        <div class="stat-num">{{ stats.rsvp }}</div>
         <div class="stat-label">Total RSVPs</div>
       </div>
     </div>
@@ -179,22 +179,22 @@
         </svg>
       </div>
       <div>
-        <div class="stat-num">4</div>
+        <div class="stat-num">{{ stats.total }}</div>
         <div class="stat-label">Total Events</div>
       </div>
     </div>
   </div>
  
   <div class="filters">
-    <button class="filter-btn active" onclick="setFilter(this)">All Events</button>
-    <button class="filter-btn" onclick="setFilter(this)">Upcoming</button>
-    <button class="filter-btn" onclick="setFilter(this)">Past</button>
+    <button class="filter-btn active" data-filter="all" onclick="setFilter(this)">All Events</button>
+    <button class="filter-btn" data-filter="upcoming" onclick="setFilter(this)">Upcoming</button>
+    <button class="filter-btn" data-filter="past" onclick="setFilter(this)">Past</button>
   </div>
  
   <div class="events-grid">
     {% if events %}
       {% for event in events %}
-      <a class="event-card" href="{{ url_for('event_dashboard', event_id=event.id) }}" style="text-decoration: none; color: inherit; display: block;">
+      <a class="event-card" data-start="{{ event.start_datetime.isoformat() }}" data-end="{{ event.end_datetime.isoformat() }}" href="{{ url_for('event_dashboard', event_id=event.id) }}" style="text-decoration: none; color: inherit; display: block;">
         <div class="card-image">
           <img src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&q=80" alt="{{ event.title }}">
           <div class="card-image-overlay"></div>
@@ -210,7 +210,7 @@
           <div class="card-footer">
             <div class="rsvp-count">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-              0 RSVPs
+              {{ event_rsvp_counts.get(event.id, 0) }} RSVPs
             </div>
             <div class="card-actions">
               <button class="action-btn" title="Edit" type="button">
@@ -257,6 +257,24 @@
   function setFilter(btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+
+    const filter = btn.dataset.filter || 'all';
+    const now = Date.now();
+    const eventCards = document.querySelectorAll('.events-grid .event-card[data-start][data-end]');
+
+    eventCards.forEach(card => {
+      const startTime = Date.parse(card.dataset.start);
+      const endTime = Date.parse(card.dataset.end);
+
+      let visible = true;
+      if (filter === 'upcoming') {
+        visible = !Number.isNaN(startTime) && startTime >= now;
+      } else if (filter === 'past') {
+        visible = !Number.isNaN(endTime) && endTime < now;
+      }
+
+      card.style.display = visible ? 'block' : 'none';
+    });
   }
  
   function openLogoutModal() {
