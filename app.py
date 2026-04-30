@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import json
 import os
+import socket
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -21,6 +22,32 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database
 db = SQLAlchemy(app)
 socketio = SocketIO(app, async_mode='threading')
+
+def get_share_url(path):
+    """Generate a shareable URL using the network hostname instead of localhost"""
+    # Get the hostname that can be accessed over the network
+    try:
+        hostname = socket.gethostname()
+        # Try to get the actual IP address
+        ip_address = socket.gethostbyname(hostname)
+        # If it's still localhost, try to find the machine's actual network IP
+        if ip_address.startswith('127.'):
+            # Fallback: try to get the network-accessible hostname
+            try:
+                # This gets the local network IP
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                ip_address = s.getsockname()[0]
+                s.close()
+            except:
+                # If all else fails, use localhost
+                ip_address = "127.0.0.1"
+    except:
+        ip_address = "127.0.0.1"
+    
+    scheme = request.scheme or 'http'
+    port = request.environ.get('SERVER_PORT', '5001')
+    return f"{scheme}://{ip_address}:{port}{path}"
 
 # User model
 class User(db.Model):
@@ -269,6 +296,7 @@ def event_dashboard(event_id):
         ).first()
 
     active_tab = request.args.get('tab', 'overview')
+    share_url = get_share_url(f'/event-dashboard/{event_id}')
     return render_template(
         'EVENT_DASHBOARD_FINAL.html',
         username=session.get('username'),
@@ -282,6 +310,7 @@ def event_dashboard(event_id):
         current_participant=participant,
         current_vote=user_vote,
         active_tab=active_tab,
+        share_url=share_url,
     )
 
 
