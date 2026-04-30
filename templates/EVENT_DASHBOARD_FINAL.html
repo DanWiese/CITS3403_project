@@ -424,6 +424,12 @@
                 <div>
                     <h1 class="event-title">{{ event.title }}</h1>
                     <p class="event-subtitle">Location: {{ event.location or 'No location set' }}</p>
+                    <p class="event-subtitle" style="margin-top:6px; font-size:0.98rem; color:var(--muted);">
+                        Time: {{ event.start_datetime|awst_datetime }}
+                        {% if event.end_datetime %}
+                        &nbsp;—&nbsp; {{ event.end_datetime|awst_datetime }}
+                        {% endif %}
+                    </p>
                 </div>
             </div>
         </div>

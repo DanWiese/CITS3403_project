@@ -12,12 +12,17 @@ document.getElementById("startTime").addEventListener("input", syncSingleDayDate
 
 function singleDaySwitched() {
     if (singleDayCheckbox.checked) {
-        finishDate.style.display = "none";
-        finishTime.style.display = "none";
+        // Keep finish date locked to the start date, but allow editing the finish time.
+        finishDate.disabled = true;
+        finishDate.classList.add('disabled');
+        finishTime.disabled = false;
+        finishTime.classList.remove('disabled');
         syncSingleDayDates();
     } else {
-        finishDate.style.display = "block";
-        finishTime.style.display = "block";
+        finishDate.disabled = false;
+        finishDate.classList.remove('disabled');
+        finishTime.disabled = false;
+        finishTime.classList.remove('disabled');
     }
 }
 
