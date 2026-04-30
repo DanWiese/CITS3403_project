@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, abort
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+import json
 import os
 from datetime import datetime
 
@@ -26,6 +27,75 @@ class User(db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+
+class Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(120), nullable=False)
+    location = db.Column(db.String(120), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    start_datetime = db.Column(db.DateTime, nullable=False)
+    end_datetime = db.Column(db.DateTime, nullable=False)
+    single_day = db.Column(db.Boolean, default=False, nullable=False)
+    is_private = db.Column(db.Boolean, default=True, nullable=False)
+    selected_tabs = db.Column(db.Text, default='[]', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    owner = db.relationship('User', backref=db.backref('events', lazy=True))
+
+    def __repr__(self):
+        return f'<Event {self.title}>'
+
+
+class EventParticipant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    event = db.relationship('Event', backref=db.backref('participant_links', lazy=True, cascade='all, delete-orphan'))
+    user = db.relationship('User')
+
+
+class EventVoteOption(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    title = db.Column(db.String(120), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    event = db.relationship('Event', backref=db.backref('vote_options', lazy=True, cascade='all, delete-orphan'))
+
+
+class EventVote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    option_id = db.Column(db.Integer, db.ForeignKey('event_vote_option.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    option = db.relationship('EventVoteOption', backref=db.backref('votes', lazy=True, cascade='all, delete-orphan'))
+    user = db.relationship('User')
+
+
+class EventExpense(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    title = db.Column(db.String(120), nullable=False)
+    amount = db.Column(db.Float, nullable=False, default=0.0)
+    paid_by = db.Column(db.String(80), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    event = db.relationship('Event', backref=db.backref('expenses', lazy=True, cascade='all, delete-orphan'))
+
+
+class EventChecklistItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    title = db.Column(db.String(120), nullable=False)
+    completed = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    event = db.relationship('Event', backref=db.backref('checklist_items', lazy=True, cascade='all, delete-orphan'))
 
 # Create tables
 with app.app_context():
@@ -95,7 +165,7 @@ def signup():
         new_user = User(
             username=username,
             email=email,
-            password=generate_password_hash(password)
+            password=generate_password_hash(password, method='pbkdf2:sha256')
         )
         db.session.add(new_user)
         db.session.commit()
@@ -113,7 +183,220 @@ def signup():
 @login_required
 def dashboard():
     """Protected dashboard page"""
-    return render_template('dashboard.html', username=session.get('username'))
+    events = Event.query.filter_by(user_id=session['user_id']).order_by(Event.start_datetime.asc()).all()
+    return render_template('dashboard.html', username=session.get('username'), events=events)
+
+
+@app.route('/event-dashboard/<int:event_id>')
+@login_required
+def event_dashboard(event_id):
+    """Event-specific dashboard page"""
+    event = Event.query.get_or_404(event_id)
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if event.is_private and event.user_id != session['user_id'] and not participant:
+        abort(403)
+
+    participants = EventParticipant.query.filter_by(event_id=event.id).order_by(EventParticipant.created_at.asc()).all()
+    vote_options = EventVoteOption.query.filter_by(event_id=event.id).order_by(EventVoteOption.created_at.asc()).all()
+    expenses = EventExpense.query.filter_by(event_id=event.id).order_by(EventExpense.created_at.asc()).all()
+    checklist_items = EventChecklistItem.query.filter_by(event_id=event.id).order_by(EventChecklistItem.created_at.asc()).all()
+
+    user_vote = None
+    if vote_options:
+        user_vote = EventVote.query.join(EventVoteOption).filter(
+            EventVote.user_id == session['user_id'],
+            EventVoteOption.event_id == event.id
+        ).first()
+
+    active_tab = request.args.get('tab', 'overview')
+    return render_template(
+        'EVENT_DASHBOARD_FINAL.html',
+        username=session.get('username'),
+        event=event,
+        participants=participants,
+        vote_options=vote_options,
+        expenses=expenses,
+        checklist_items=checklist_items,
+        current_participant=participant,
+        current_vote=user_vote,
+        active_tab=active_tab,
+    )
+
+
+@app.route('/events/new')
+@login_required
+def new_event():
+    """Event creation page"""
+    return render_template('event_creation.html')
+
+
+@app.route('/events', methods=['POST'])
+@login_required
+def create_event():
+    """Create a new event from the event creation form"""
+    data = request.get_json(silent=True) or request.form
+
+    title = (data.get('title') or '').strip()
+    location = (data.get('location') or '').strip()
+    description = (data.get('description') or '').strip()
+    start_date = (data.get('start_date') or '').strip()
+    start_time = (data.get('start_time') or '').strip()
+    end_date = (data.get('end_date') or '').strip()
+    end_time = (data.get('end_time') or '').strip()
+    single_day = str(data.get('single_day', '')).lower() in {'true', '1', 'yes', 'on'}
+    is_private = str(data.get('is_private', 'true')).lower() in {'true', '1', 'yes', 'on'}
+
+    selected_tabs = data.get('selected_tabs', [])
+    if isinstance(selected_tabs, str):
+        try:
+            selected_tabs = json.loads(selected_tabs)
+        except json.JSONDecodeError:
+            selected_tabs = [selected_tabs] if selected_tabs else []
+
+    if not title:
+        return jsonify({'success': False, 'message': 'Event name is required'}), 400
+
+    if not start_date or not start_time:
+        return jsonify({'success': False, 'message': 'Start date and time are required'}), 400
+
+    if single_day:
+        end_date = start_date
+        if not end_time:
+            end_time = start_time
+
+    if not end_date or not end_time:
+        return jsonify({'success': False, 'message': 'End date and time are required'}), 400
+
+    try:
+        start_datetime = datetime.fromisoformat(f'{start_date}T{start_time}')
+        end_datetime = datetime.fromisoformat(f'{end_date}T{end_time}')
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid date or time format'}), 400
+
+    if end_datetime < start_datetime:
+        return jsonify({'success': False, 'message': 'End date and time must be after the start date and time'}), 400
+
+    event = Event(
+        user_id=session['user_id'],
+        title=title,
+        location=location,
+        description=description,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        single_day=single_day,
+        is_private=is_private,
+        selected_tabs=json.dumps(selected_tabs),
+    )
+
+    db.session.add(event)
+    db.session.commit()
+
+    owner_participant = EventParticipant(event_id=event.id, user_id=session['user_id'])
+    db.session.add(owner_participant)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Event created successfully',
+        'event_id': event.id,
+        'redirect_url': url_for('dashboard')
+    }), 201
+
+
+@app.route('/event-dashboard/<int:event_id>/join', methods=['POST'])
+@login_required
+def join_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if event.is_private and event.user_id != session['user_id'] and participant is None:
+        abort(403)
+    if participant is None:
+        new_participant = EventParticipant(event_id=event.id, user_id=session['user_id'])
+        db.session.add(new_participant)
+        db.session.commit()
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='participants'))
+
+
+@app.route('/event-dashboard/<int:event_id>/vote-options', methods=['POST'])
+@login_required
+def add_vote_option(event_id):
+    event = Event.query.get_or_404(event_id)
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if event.is_private and event.user_id != session['user_id'] and participant is None:
+        abort(403)
+    title = (request.form.get('title') or '').strip()
+    if title:
+        db.session.add(EventVoteOption(event_id=event.id, title=title))
+        db.session.commit()
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='voting'))
+
+
+@app.route('/event-dashboard/<int:event_id>/vote/<int:option_id>', methods=['POST'])
+@login_required
+def cast_vote(event_id, option_id):
+    event = Event.query.get_or_404(event_id)
+    option = EventVoteOption.query.filter_by(id=option_id, event_id=event.id).first_or_404()
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if event.is_private and event.user_id != session['user_id'] and participant is None:
+        abort(403)
+
+    existing_vote = EventVote.query.join(EventVoteOption).filter(
+        EventVote.user_id == session['user_id'],
+        EventVoteOption.event_id == event.id,
+    ).first()
+    if existing_vote:
+        db.session.delete(existing_vote)
+        db.session.commit()
+
+    db.session.add(EventVote(option_id=option.id, user_id=session['user_id']))
+    db.session.commit()
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='voting'))
+
+
+@app.route('/event-dashboard/<int:event_id>/expenses', methods=['POST'])
+@login_required
+def add_expense(event_id):
+    event = Event.query.get_or_404(event_id)
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if event.is_private and event.user_id != session['user_id'] and participant is None:
+        abort(403)
+    title = (request.form.get('title') or '').strip()
+    amount_raw = (request.form.get('amount') or '').strip()
+    try:
+        amount = float(amount_raw)
+    except ValueError:
+        amount = 0.0
+    if title:
+        db.session.add(EventExpense(event_id=event.id, title=title, amount=amount, paid_by=session.get('username')))
+        db.session.commit()
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='expenses'))
+
+
+@app.route('/event-dashboard/<int:event_id>/checklist', methods=['POST'])
+@login_required
+def add_checklist_item(event_id):
+    event = Event.query.get_or_404(event_id)
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if event.is_private and event.user_id != session['user_id'] and participant is None:
+        abort(403)
+    title = (request.form.get('title') or '').strip()
+    if title:
+        db.session.add(EventChecklistItem(event_id=event.id, title=title))
+        db.session.commit()
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='checklist'))
+
+
+@app.route('/event-dashboard/<int:event_id>/checklist/<int:item_id>/toggle', methods=['POST'])
+@login_required
+def toggle_checklist_item(event_id, item_id):
+    event = Event.query.get_or_404(event_id)
+    item = EventChecklistItem.query.filter_by(id=item_id, event_id=event.id).first_or_404()
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if event.is_private and event.user_id != session['user_id'] and participant is None:
+        abort(403)
+    item.completed = not item.completed
+    db.session.commit()
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='checklist'))
 
 @app.route('/logout')
 def logout():
@@ -145,4 +428,4 @@ def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)))
