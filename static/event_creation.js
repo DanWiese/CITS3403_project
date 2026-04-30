@@ -1,4 +1,6 @@
 const singleDayCheckbox = document.getElementById("singleDay");
+const startDate = document.getElementById("startDate");
+const startTime = document.getElementById("startTime");
 const finishDate = document.getElementById("finishDate");
 const finishTime = document.getElementById("finishTime");
 const pollsCheckbox = document.getElementById("pollsCheckbox");
@@ -6,23 +8,15 @@ const expensesCheckbox = document.getElementById("expensesCheckbox");
 const discussionCheckbox = document.getElementById("discussionCheckbox");
 
 singleDayCheckbox.addEventListener("change", singleDaySwitched);
-pollsCheckbox.addEventListener("change", toggleOptionalTabs);
-document.getElementById("startDate").addEventListener("input", syncSingleDayDates);
-document.getElementById("startTime").addEventListener("input", syncSingleDayDates);
+startDate.addEventListener("input", syncSingleDayDates);
 
 function singleDaySwitched() {
     if (singleDayCheckbox.checked) {
         // Keep finish date locked to the start date, but allow editing the finish time.
         finishDate.disabled = true;
-        finishDate.classList.add('disabled');
-        finishTime.disabled = false;
-        finishTime.classList.remove('disabled');
         syncSingleDayDates();
     } else {
         finishDate.disabled = false;
-        finishDate.classList.remove('disabled');
-        finishTime.disabled = false;
-        finishTime.classList.remove('disabled');
     }
 }
 
@@ -31,37 +25,13 @@ function syncSingleDayDates() {
         return;
     }
 
-    const startDateValue = document.getElementById("startDate").value;
-    const startTimeValue = document.getElementById("startTime").value;
-
-    finishDate.value = startDateValue;
-
-    if (startTimeValue) {
-        const [hours, minutes] = startTimeValue.split(":").map(Number);
-        const endTimeDate = new Date();
-        endTimeDate.setHours(hours, minutes, 0, 0);
-        endTimeDate.setMinutes(endTimeDate.getMinutes() + 60);
-
-        const endHours = String(endTimeDate.getHours()).padStart(2, "0");
-        const endMinutes = String(endTimeDate.getMinutes()).padStart(2, "0");
-        finishTime.value = `${endHours}:${endMinutes}`;
-    }
-}
-
-function toggleOptionalTabs() {
-    expensesCheckbox.disabled = !pollsCheckbox.checked;
-    discussionCheckbox.disabled = !pollsCheckbox.checked;
-
-    if (!pollsCheckbox.checked) {
-        expensesCheckbox.checked = false;
-        discussionCheckbox.checked = false;
-    }
+    finishDate.value = startDate.value;
 }
 
 const newEventForm = document.getElementById("newEventForm");
-newEventForm.addEventListener("submit", timesValidation);
+newEventForm.addEventListener("submit", submission);
 
-async function timesValidation(event) {
+async function submission(event) {
     event.preventDefault();
 
     if (!validateTimes()) {
@@ -79,11 +49,10 @@ async function timesValidation(event) {
         title: document.getElementById("eventName").value.trim(),
         location: document.getElementById("location").value.trim(),
         description: document.getElementById("description").value.trim(),
-        start_date: document.getElementById("startDate").value,
-        start_time: document.getElementById("startTime").value,
+        start_date: startDate.value,
+        start_time: startTime.value,
         end_date: finishDate.value,
         end_time: finishTime.value,
-        single_day: singleDayCheckbox.checked,
         is_private: !privacyChoice || privacyChoice.value === "private",
         selected_tabs: selectedTabs
     };
@@ -112,33 +81,31 @@ async function timesValidation(event) {
 }
 
 function validateTimes() {
-    const startDate = document.getElementById("startDate").value;
-    const startTime = document.getElementById("startTime").value;
+    syncSingleDayDates();
+    const startDateValue = startDate.value;
+    const startTimeValue = startTime.value;
     let finishDateValue = finishDate.value;
     const finishTimeValue = finishTime.value;
 
-    if (singleDayCheckbox.checked) {
-        finishDateValue = startDate;
-        finishDate.value = startDate;
-
-        if (startTime && (!finishTimeValue || startTime >= finishTimeValue)) {
-            syncSingleDayDates();
+    if (startDateValue == "" || startTimeValue == "") {
+        alert("The start date and time are required.");
+        return false;
+    } else if (finishDateValue == "") {
+        if (finishTimeValue != "") {
+            alert("The finish date is required if a finish time is entered.");
+            return false;
+        } else {
+            return true; // Allow undecided finish date and time
         }
-    }
-    if (startDate == "" || finishDateValue == "") {
-        return true; // Allow undecided dates)
-    } else if (startDate > finishDateValue) {
+    } else if (startDateValue > finishDateValue) {
         alert("The finish date and time must be after the start date and time.");
         return false;
-    } else if (startTime == "" || finishTimeValue == "") {
-        return true; // Allow undecided times
-    } else if (startDate == finishDateValue && startTime >= finishTimeValue) {
+    } else if (startDateValue == finishDateValue && startTimeValue >= finishTimeValue) {
         alert("The finish time must be after the start time.");
         return false;
     }
     return true;
 }
 
-toggleOptionalTabs();
 singleDaySwitched();
 

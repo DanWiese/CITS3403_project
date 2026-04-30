@@ -70,8 +70,7 @@ class Event(db.Model):
     location = db.Column(db.String(120), nullable=True)
     description = db.Column(db.Text, nullable=True)
     start_datetime = db.Column(db.DateTime, nullable=False)
-    end_datetime = db.Column(db.DateTime, nullable=False)
-    single_day = db.Column(db.Boolean, default=False, nullable=False)
+    end_datetime = db.Column(db.DateTime, nullable=True)
     is_private = db.Column(db.Boolean, default=True, nullable=False)
     selected_tabs = db.Column(db.Text, default='[]', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -415,7 +414,6 @@ def create_event():
     start_time = (data.get('start_time') or '').strip()
     end_date = (data.get('end_date') or '').strip()
     end_time = (data.get('end_time') or '').strip()
-    single_day = str(data.get('single_day', '')).lower() in {'true', '1', 'yes', 'on'}
     is_private = str(data.get('is_private', 'true')).lower() in {'true', '1', 'yes', 'on'}
 
     selected_tabs = data.get('selected_tabs', [])
@@ -431,22 +429,20 @@ def create_event():
     if not start_date or not start_time:
         return jsonify({'success': False, 'message': 'Start date and time are required'}), 400
 
-    if single_day:
-        end_date = start_date
-        if not end_time:
-            end_time = start_time
-
-    if not end_date or not end_time:
-        return jsonify({'success': False, 'message': 'End date and time are required'}), 400
-
     try:
         start_datetime = datetime.fromisoformat(f'{start_date}T{start_time}')
-        end_datetime = datetime.fromisoformat(f'{end_date}T{end_time}')
+        if end_date:
+            if end_time:
+                end_datetime = datetime.fromisoformat(f'{end_date}T{end_time}')
+            else: 
+                end_datetime = datetime.fromisoformat(f'end_date')
+            if end_datetime < start_datetime:
+                return jsonify({'success': False, 'message': 'End date and time must be after the start date and time'}), 400
+        else:     
+            end_datetime = None
+            
     except ValueError:
         return jsonify({'success': False, 'message': 'Invalid date or time format'}), 400
-
-    if end_datetime < start_datetime:
-        return jsonify({'success': False, 'message': 'End date and time must be after the start date and time'}), 400
 
     event = Event(
         user_id=session['user_id'],
@@ -455,7 +451,6 @@ def create_event():
         description=description,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
-        single_day=single_day,
         is_private=is_private,
         selected_tabs=json.dumps(selected_tabs),
     )
