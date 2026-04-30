@@ -1,13 +1,17 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, abort
 from flask_sqlalchemy import SQLAlchemy
+from flask_socketio import SocketIO, join_room, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 # Initialize Flask app
 app = Flask(__name__)
+
+AWST_TZ = ZoneInfo('Australia/Perth')
 
 # Configuration
 app.config['SECRET_KEY'] = os.urandom(24).hex() #protects user sessions
@@ -16,6 +20,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
 db = SQLAlchemy(app)
+socketio = SocketIO(app, async_mode='threading')
 
 # User model
 class User(db.Model):
@@ -97,6 +102,17 @@ class EventChecklistItem(db.Model):
 
     event = db.relationship('Event', backref=db.backref('checklist_items', lazy=True, cascade='all, delete-orphan'))
 
+
+class EventDiscussionMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    event = db.relationship('Event', backref=db.backref('discussion_messages', lazy=True, cascade='all, delete-orphan'))
+    user = db.relationship('User')
+
 # Create tables
 with app.app_context():
     db.create_all()
@@ -109,6 +125,19 @@ def login_required(f):
             return redirect(url_for('login_page'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def format_awst(dt):
+    if dt is None:
+        return ''
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(AWST_TZ).strftime('%d %b %Y %I:%M %p AWST')
+
+
+@app.template_filter('awst_datetime')
+def awst_datetime_filter(value):
+    return format_awst(value)
 
 # ============ ROUTES ============
 
@@ -229,6 +258,8 @@ def event_dashboard(event_id):
     vote_options = EventVoteOption.query.filter_by(event_id=event.id).order_by(EventVoteOption.created_at.asc()).all()
     expenses = EventExpense.query.filter_by(event_id=event.id).order_by(EventExpense.created_at.asc()).all()
     checklist_items = EventChecklistItem.query.filter_by(event_id=event.id).order_by(EventChecklistItem.created_at.asc()).all()
+    discussion_messages = EventDiscussionMessage.query.filter_by(event_id=event.id).order_by(EventDiscussionMessage.created_at.desc()).all()
+    expense_total = sum(expense.amount for expense in expenses)
 
     user_vote = None
     if vote_options:
@@ -245,7 +276,9 @@ def event_dashboard(event_id):
         participants=participants,
         vote_options=vote_options,
         expenses=expenses,
+        expense_total=expense_total,
         checklist_items=checklist_items,
+        discussion_messages=discussion_messages,
         current_participant=participant,
         current_vote=user_vote,
         active_tab=active_tab,
@@ -415,6 +448,88 @@ def add_checklist_item(event_id):
     return redirect(url_for('event_dashboard', event_id=event.id, tab='checklist'))
 
 
+@app.route('/event-dashboard/<int:event_id>/discussion', methods=['POST'])
+@login_required
+def add_discussion_message(event_id):
+    event = Event.query.get_or_404(event_id)
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if event.is_private and event.user_id != session['user_id'] and participant is None:
+        abort(403)
+
+    content = (request.form.get('content') or '').strip()
+    if content:
+        db.session.add(EventDiscussionMessage(event_id=event.id, user_id=session['user_id'], content=content))
+        db.session.commit()
+
+    return redirect(url_for('event_dashboard', event_id=event.id, tab='discussion'))
+
+
+def _can_access_event(event, user_id):
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=user_id).first()
+    if event.is_private and event.user_id != user_id and participant is None:
+        return False
+    return True
+
+
+@socketio.on('join_event_room')
+def handle_join_event_room(data):
+    if 'user_id' not in session:
+        emit('discussion_error', {'message': 'Authentication required.'})
+        return
+
+    event_id_raw = (data or {}).get('event_id')
+    try:
+        event_id = int(event_id_raw)
+    except (TypeError, ValueError):
+        emit('discussion_error', {'message': 'Invalid event id.'})
+        return
+
+    event = Event.query.get(event_id)
+    if event is None or not _can_access_event(event, session['user_id']):
+        emit('discussion_error', {'message': 'Access denied for this event.'})
+        return
+
+    join_room(f'event_{event.id}')
+
+
+@socketio.on('post_discussion_message')
+def handle_post_discussion_message(data):
+    if 'user_id' not in session:
+        emit('discussion_error', {'message': 'Authentication required.'})
+        return
+
+    payload = data or {}
+    event_id_raw = payload.get('event_id')
+    content = (payload.get('content') or '').strip()
+
+    try:
+        event_id = int(event_id_raw)
+    except (TypeError, ValueError):
+        emit('discussion_error', {'message': 'Invalid event id.'})
+        return
+
+    if not content:
+        emit('discussion_error', {'message': 'Message cannot be empty.'})
+        return
+
+    event = Event.query.get(event_id)
+    if event is None or not _can_access_event(event, session['user_id']):
+        emit('discussion_error', {'message': 'Access denied for this event.'})
+        return
+
+    message = EventDiscussionMessage(event_id=event.id, user_id=session['user_id'], content=content)
+    db.session.add(message)
+    db.session.commit()
+
+    username = session.get('username') or 'Unknown'
+    message_payload = {
+        'username': username,
+        'content': message.content,
+        'created_at': format_awst(message.created_at),
+    }
+    emit('new_discussion_message', message_payload, room=f'event_{event.id}')
+
+
 @app.route('/event-dashboard/<int:event_id>/checklist/<int:item_id>/toggle', methods=['POST'])
 @login_required
 def toggle_checklist_item(event_id, item_id):
@@ -457,4 +572,4 @@ def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)))
+    socketio.run(app, debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)))

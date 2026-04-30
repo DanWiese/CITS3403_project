@@ -351,6 +351,55 @@
             text-decoration: line-through;
             color: var(--muted);
         }
+
+        .total-pill {
+            border-radius: 999px;
+            background: #eff6ff;
+            border: 1px solid rgba(37, 99, 235, 0.25);
+            color: var(--accent);
+            padding: 8px 14px;
+            font-weight: 700;
+        }
+
+        .check-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .check-toggle input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #16a34a;
+            cursor: pointer;
+        }
+
+        .message-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .message-item {
+            background: var(--surface-soft);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+        }
+
+        .message-meta {
+            margin: 0 0 6px;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .message-body {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -454,6 +503,7 @@
         <div id="expenses" class="card tab-content {% if active_tab == 'expenses' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Expenses</h2>
+                <div class="total-pill">Running Total: ${{ '%.2f'|format(expense_total) }}</div>
                 <form method="post" action="{{ url_for('add_expense', event_id=event.id) }}" class="inline-form">
                     <input type="text" name="title" placeholder="Expense name" required>
                     <input type="number" name="amount" step="0.01" min="0" placeholder="Amount" required>
@@ -497,9 +547,10 @@
                     </div>
                     <div class="option-actions">
                         <form method="post" action="{{ url_for('toggle_checklist_item', event_id=event.id, item_id=item.id) }}">
-                            <button class="vote-button" type="submit">
-                                {% if item.completed %}↩ Undo{% else %}✅ Mark Done{% endif %}
-                            </button>
+                            <label class="check-toggle">
+                                <input type="checkbox" {% if item.completed %}checked{% endif %} onchange="this.form.submit()">
+                                Done
+                            </label>
                         </form>
                     </div>
                 </div>
@@ -510,12 +561,23 @@
             {% endif %}
         </div>
 
-        <div id="discussion" class="card tab-content {% if active_tab == 'discussion' %}active{% endif %}">
+        <div id="discussion" class="card tab-content {% if active_tab == 'discussion' %}active{% endif %}" data-event-id="{{ event.id }}">
             <div class="section-heading">
                 <h2>Discussion</h2>
-                <button class="button-primary">+ New Message</button>
+                <form id="discussionForm" method="post" action="{{ url_for('add_discussion_message', event_id=event.id) }}" class="inline-form" style="margin-bottom: 0;">
+                    <input id="discussionInput" type="text" name="content" placeholder="Write a message" required>
+                    <button class="button-primary" type="submit">+ Post Message</button>
+                </form>
             </div>
-            <p class="placeholder">Chat with participants, share ideas, and keep the conversation in one place.</p>
+            <p id="discussionEmptyState" class="empty-state" {% if discussion_messages %}style="display:none;"{% endif %}>No discussion messages yet. Start the conversation above.</p>
+            <div id="discussionMessages" class="message-list" {% if not discussion_messages %}style="display:none;"{% endif %}>
+                {% for message in discussion_messages %}
+                <div class="message-item">
+                    <p class="message-meta">{{ message.user.username }} • {{ message.created_at|awst_datetime }}</p>
+                    <p class="message-body">{{ message.content }}</p>
+                </div>
+                {% endfor %}
+            </div>
         </div>
 
         <div id="itinerary" class="card tab-content {% if active_tab == 'itinerary' %}active{% endif %}">
@@ -534,7 +596,60 @@
             <p class="placeholder">Manage lodging options, bookings, and shared accommodations.</p>
         </div>
 
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
+        // Get event ID from data attribute (avoids template syntax in JavaScript)
+        const currentEventId = parseInt(document.getElementById('discussion').dataset.eventId, 10);
+        const discussionForm = document.getElementById('discussionForm');
+        const discussionInput = document.getElementById('discussionInput');
+        const discussionMessages = document.getElementById('discussionMessages');
+        const discussionEmptyState = document.getElementById('discussionEmptyState');
+
+        function appendDiscussionMessage(message) {
+            const item = document.createElement('div');
+            item.className = 'message-item';
+
+            const meta = document.createElement('p');
+            meta.className = 'message-meta';
+            meta.textContent = `${message.username} • ${message.created_at}`;
+
+            const body = document.createElement('p');
+            body.className = 'message-body';
+            body.textContent = message.content;
+
+            item.appendChild(meta);
+            item.appendChild(body);
+
+            discussionMessages.prepend(item);
+            discussionMessages.style.display = 'grid';
+            discussionEmptyState.style.display = 'none';
+        }
+
+        const discussionSocket = io();
+        discussionSocket.on('connect', () => {
+            discussionSocket.emit('join_event_room', { event_id: currentEventId });
+        });
+
+        discussionSocket.on('new_discussion_message', appendDiscussionMessage);
+        discussionSocket.on('discussion_error', (payload) => {
+            if (payload && payload.message) {
+                alert(payload.message);
+            }
+        });
+
+        discussionForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const content = discussionInput.value.trim();
+            if (!content) {
+                return;
+            }
+            discussionSocket.emit('post_discussion_message', {
+                event_id: currentEventId,
+                content: content,
+            });
+            discussionInput.value = '';
+        });
+
         function openTab(tabName, button) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
