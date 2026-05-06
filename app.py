@@ -26,6 +26,26 @@ class User(db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+    
+# Event model
+class Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    title = db.Column(db.String(120), nullable=False)
+    location = db.Column(db.String(200))
+    description = db.Column(db.Text)
+
+    start_datetime = db.Column(db.DateTime)
+    end_datetime = db.Column(db.DateTime)
+
+    is_public = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    creator = db.relationship('User', backref='events')
+
+    def __repr__(self):
+        return f'<Event {self.title}>'
 
 # Create tables
 with app.app_context():
