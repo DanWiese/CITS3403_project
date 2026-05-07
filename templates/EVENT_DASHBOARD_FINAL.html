@@ -220,6 +220,22 @@
             cursor: pointer;
         }
 
+        .button-secondary {
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .participants-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .option-list {
             display: grid;
             gap: 18px;
@@ -313,6 +329,210 @@
         .tab-content.active {
             display: block;
         }
+
+        .inline-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .inline-form input[type="text"],
+        .inline-form input[type="number"] {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 14px;
+            font: inherit;
+            min-width: 180px;
+            background: white;
+        }
+
+        .inline-form input[type="number"] {
+            max-width: 140px;
+        }
+
+        .empty-state {
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .check-item.done .option-title {
+            text-decoration: line-through;
+            color: var(--muted);
+        }
+
+        .total-pill {
+            border-radius: 999px;
+            background: #eff6ff;
+            border: 1px solid rgba(37, 99, 235, 0.25);
+            color: var(--accent);
+            padding: 8px 14px;
+            font-weight: 700;
+        }
+
+        .check-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .check-toggle input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #16a34a;
+            cursor: pointer;
+        }
+
+        .message-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .message-item {
+            background: var(--surface-soft);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+        }
+
+        .message-meta {
+            margin: 0 0 6px;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .message-body {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .join-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.58);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .join-modal.show {
+            display: flex;
+        }
+
+        .join-modal-content {
+            background: white;
+            border-radius: 24px;
+            max-width: 460px;
+            width: 100%;
+            padding: 28px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+            text-align: center;
+        }
+
+        .join-modal-content h2 {
+            margin: 0 0 12px;
+            font-size: 1.4rem;
+        }
+
+        .join-modal-content p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .join-modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .join-modal-actions button {
+            flex: 1;
+            border: none;
+            border-radius: 14px;
+            padding: 12px 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-cancel {
+            background: #e5e7eb;
+            color: var(--text);
+        }
+
+        .btn-request {
+            background: var(--accent);
+            color: white;
+        }
+
+        .pending-requests {
+            margin-bottom: 22px;
+            padding: 16px;
+            border-radius: 18px;
+            background: #fffbeb;
+            border: 1px solid #facc15;
+        }
+
+        .pending-requests h3 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #92400e;
+        }
+
+        .request-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            background: white;
+            border-radius: 14px;
+            margin-bottom: 10px;
+        }
+
+        .request-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .request-user {
+            font-weight: 700;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .request-actions button {
+            border: none;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-approve {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-reject {
+            background: #ef4444;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -328,106 +548,218 @@
         </span>
         <span class="brand-name">Shindig</span>
     </div>
+
+    <div id="joinModal" class="join-modal{% if show_join_modal %} show{% endif %}">
+        <div class="join-modal-content">
+            <h2>Request to join</h2>
+            <p>This is a private event. Send a request to the host and wait for approval.</p>
+            <div class="join-modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeJoinModal()">Cancel</button>
+                <button type="button" class="btn-request" onclick="submitJoinRequest()">Send Request</button>
+            </div>
+        </div>
+    </div>
+
     <div class="page-shell">
         <a href="{{ url_for('dashboard') }}" class="back-link">← Back to Dashboard</a>
+
         <div class="page-header">
-                <div class="page-header-top">
-                    <div>
-                        <h1 class="event-title">Event Title</h1>
-                    </div>
-                    <a href="#" class="modify-link">Modify Event</a>
+            <div class="page-header-top">
+                <div>
+                    <h1 class="event-title">{{ event.title }}</h1>
+                    <p class="event-subtitle">Location: {{ event.location or 'No location set' }}</p>
+                    <p class="event-subtitle" style="margin-top:6px; font-size:0.98rem; color:var(--muted);">
+                        Time: {{ event.start_datetime|awst_datetime }}
+                        {% if event.end_datetime %}
+                        &nbsp;—&nbsp; {{ event.end_datetime|awst_datetime }}
+                        {% endif %}
+                    </p>
                 </div>
             </div>
-    </div>
-    <div class="tabs">
-        <button class="tab-button active" onclick="openTab('overview', this)">🧭 Overview</button>
-        <button class="tab-button" onclick="openTab('participants', this)">👥 Participants</button>
-        <button class="tab-button" onclick="openTab('voting', this)">📅 Voting</button>
-        <button class="tab-button" onclick="openTab('discussion', this)">💬 Discussion</button>
-        <button class="tab-button" onclick="openTab('expenses', this)">💲 Expenses</button>
-        <button class="tab-button" onclick="openTab('checklist', this)">✅ Checklist</button>
-        <button class="tab-button" onclick="openTab('stays', this)">🏠 Stays</button>
-    </div>
-    <div id="overview" class="card tab-content active">
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button {% if active_tab == 'overview' %}active{% endif %}" onclick="openTab('overview', this)">🧭 Overview</button>
+            <button class="tab-button {% if active_tab == 'participants' %}active{% endif %}" onclick="openTab('participants', this)">👥 Participants</button>
+            <button class="tab-button {% if active_tab == 'voting' %}active{% endif %}" onclick="openTab('voting', this)">📅 Voting</button>
+            <button class="tab-button {% if active_tab == 'discussion' %}active{% endif %}" onclick="openTab('discussion', this)">💬 Discussion</button>
+            <button class="tab-button {% if active_tab == 'expenses' %}active{% endif %}" onclick="openTab('expenses', this)">💲 Expenses</button>
+            <button class="tab-button {% if active_tab == 'checklist' %}active{% endif %}" onclick="openTab('checklist', this)">✅ Checklist</button>
+            <button class="tab-button {% if active_tab == 'stays' %}active{% endif %}" onclick="openTab('stays', this)">🏠 Stays</button>
+        </div>
+
+        <div id="overview" class="card tab-content {% if active_tab == 'overview' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Overview</h2>
             </div>
-            <p class="placeholder">See event details and updates here.</p>
+            <p class="placeholder">{{ event.description or 'No description provided.' }}</p>
         </div>
-    <div id="participants" class="card tab-content">
+
+        <div id="participants" class="card tab-content {% if active_tab == 'participants' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Participants</h2>
+                {% if event_is_owner %}
+                <div class="participants-actions">
+                    <button class="button-secondary" type="button" onclick="shareEventInvite()">Add Participant</button>
+                    <form method="post" action="{{ url_for('join_event', event_id=event.id) }}">
+                        <button class="button-primary" type="submit">Joined</button>
+                    </form>
+                </div>
+                {% elif not event.is_private or current_participant %}
+                <form method="post" action="{{ url_for('join_event', event_id=event.id) }}">
+                    <button class="button-primary" type="submit">
+                        {% if current_participant %}Joined{% else %}Join Event{% endif %}
+                    </button>
+                </form>
+                {% endif %}
             </div>
+
+            {% if event_is_owner and pending_requests %}
+            <div class="pending-requests">
+                <h3>Pending Join Requests</h3>
+                {% for req in pending_requests %}
+                <div class="request-item">
+                    <span class="request-user">{{ req.user.username }}</span>
+                    <div class="request-actions">
+                        <form method="post" action="{{ url_for('approve_join_request', event_id=event.id, request_id=req.id) }}">
+                            <button type="submit" class="btn-approve">Approve</button>
+                        </form>
+                        <form method="post" action="{{ url_for('reject_join_request', event_id=event.id, request_id=req.id) }}">
+                            <button type="submit" class="btn-reject">Reject</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if participants %}
             <div class="participant-list">
-                <div class="participant-pill"><span class="participant-avatar">AL</span>Alex</div>
-                <div class="participant-pill"><span class="participant-avatar">BE</span>Ben</div>
-                <div class="participant-pill"><span class="participant-avatar">CI</span>Ciara</div>
-                <div class="participant-pill"><span class="participant-avatar">+2</span>More</div>
+                {% for participant in participants %}
+                <div class="participant-pill">
+                    <span class="participant-avatar">{{ participant.user.username[:2]|upper }}</span>
+                    {{ participant.user.username }}
+                </div>
+                {% endfor %}
             </div>
+            {% else %}
+            <p class="empty-state">No participants yet.</p>
+            {% endif %}
         </div>
-    <div id="voting" class="card tab-content">
+
+        <div id="voting" class="card tab-content {% if active_tab == 'voting' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Date Options</h2>
-                <button class="button-primary">+ Suggest Date</button>
+                <form method="post" action="{{ url_for('add_vote_option', event_id=event.id) }}" class="inline-form">
+                    <input type="text" name="title" placeholder="Add date option" required>
+                    <button class="button-primary" type="submit">+ Suggest Date</button>
+                </form>
             </div>
+            {% if vote_options %}
             <div class="option-list">
-                <div class="option-item selected">
+                {% for option in vote_options %}
+                <div class="option-item {% if current_vote and current_vote.option_id == option.id %}selected{% endif %}">
                     <div class="option-info">
-                        <p class="option-title">Option 1</p>
+                        <p class="option-title">{{ option.title }}</p>
+                        <p class="option-subtitle">{{ option.votes|length }} vote{{ '' if option.votes|length == 1 else 's' }}</p>
                     </div>
                     <div class="option-actions">
-                        <div class="vote-pill">#No of Votes <span>votes</span></div>
-                        <button class="vote-button">👍 Voted</button>
-                        <button class="finalize-button">Finalise</button>
+                        <div class="vote-pill">{{ option.votes|length }} <span>votes</span></div>
+                        <form method="post" action="{{ url_for('cast_vote', event_id=event.id, option_id=option.id) }}">
+                            <button class="vote-button" type="submit">
+                                {% if current_vote and current_vote.option_id == option.id %}👍 Voted{% else %}👍 Vote{% endif %}
+                            </button>
+                        </form>
                     </div>
                 </div>
-                <div class="option-item">
-                    <div class="option-info">
-                        <p class="option-title">Option 2</p>
-                    </div>
-                    <div class="option-actions">
-                        <div class="vote-pill">#No of Votes <span>votes</span></div>
-                        <button class="vote-button">👍 Vote</button>
-                        <button class="finalize-button">Finalise</button>
-                    </div>
-                </div>
-                <div class="option-item">
-                    <div class="option-info">
-                        <p class="option-title">Option 3</p>
-                    </div>
-                    <div class="option-actions">
-                        <div class="vote-pill">#No of Votes <span>votes</span></div>
-                        <button class="vote-button">👍 Vote</button>
-                        <button class="finalize-button">Finalise</button>
-                    </div>
-                </div>
+                {% endfor %}
             </div>
+            {% else %}
+            <p class="empty-state">No date options yet. Add one above to start voting.</p>
+            {% endif %}
         </div>
-        <div id="expenses" class="card tab-content">
+
+        <div id="expenses" class="card tab-content {% if active_tab == 'expenses' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Expenses</h2>
-                <button class="button-primary">+ Add Expense</button>
+                <div class="total-pill">Running Total: ${{ '%.2f'|format(expense_total) }}</div>
+                <form method="post" action="{{ url_for('add_expense', event_id=event.id) }}" class="inline-form">
+                    <input type="text" name="title" placeholder="Expense name" required>
+                    <input type="number" name="amount" step="0.01" min="0" placeholder="Amount" required>
+                    <button class="button-primary" type="submit">+ Add Expense</button>
+                </form>
             </div>
-            <p class="placeholder">Track trip costs, split bills, and view shared expenses here.</p>
+            {% if expenses %}
+            <div class="option-list">
+                {% for expense in expenses %}
+                <div class="option-item">
+                    <div class="option-info">
+                        <p class="option-title">{{ expense.title }}</p>
+                        <p class="option-subtitle">Paid by {{ expense.paid_by or 'Unknown' }}</p>
+                    </div>
+                    <div class="option-actions">
+                        <div class="vote-pill">${{ '%.2f'|format(expense.amount) }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">No expenses yet.</p>
+            {% endif %}
         </div>
 
-        <div id="checklist" class="card tab-content">
+        <div id="checklist" class="card tab-content {% if active_tab == 'checklist' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Checklist</h2>
-                <button class="button-primary">+ Add Item</button>
+                <form method="post" action="{{ url_for('add_checklist_item', event_id=event.id) }}" class="inline-form">
+                    <input type="text" name="title" placeholder="Checklist item" required>
+                    <button class="button-primary" type="submit">+ Add Item</button>
+                </form>
             </div>
-            <p class="placeholder">Create packing, activity, and booking checklists for your trip.</p>
+            {% if checklist_items %}
+            <div class="option-list">
+                {% for item in checklist_items %}
+                <div class="option-item check-item {% if item.completed %}done{% endif %}">
+                    <div class="option-info">
+                        <p class="option-title">{{ item.title }}</p>
+                        <p class="option-subtitle">{{ 'Completed' if item.completed else 'Pending' }}</p>
+                    </div>
+                    <div class="option-actions">
+                        <form method="post" action="{{ url_for('toggle_checklist_item', event_id=event.id, item_id=item.id) }}">
+                            <label class="check-toggle">
+                                <input type="checkbox" {% if item.completed %}checked{% endif %} onchange="this.form.submit()">
+                                Done
+                            </label>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">No checklist items yet.</p>
+            {% endif %}
         </div>
 
-        <div id="discussion" class="card tab-content">
+        <div id="discussion" class="card tab-content {% if active_tab == 'discussion' %}active{% endif %}" data-event-id="{{ event.id }}" data-share-url="{{ share_url or '' }}" data-invite-token="{{ invite_token or '' }}" data-request-url="{{ url_for('request_join_event', token=invite_token) if invite_token else '' }}">
             <div class="section-heading">
                 <h2>Discussion</h2>
-                <button class="button-primary">+ New Message</button>
+                <form id="discussionForm" method="post" action="{{ url_for('add_discussion_message', event_id=event.id) }}" class="inline-form" style="margin-bottom: 0;">
+                    <input id="discussionInput" type="text" name="content" placeholder="Write a message" required>
+                    <button class="button-primary" type="submit">+ Post Message</button>
+                </form>
             </div>
-            <p class="placeholder">Chat with participants, share ideas, and keep the conversation in one place.</p>
+            <p id="discussionEmptyState" class="empty-state" {% if discussion_messages %}style="display:none;"{% endif %}>No discussion messages yet. Start the conversation above.</p>
+            <div id="discussionMessages" class="message-list" {% if not discussion_messages %}style="display:none;"{% endif %}>
+                {% for message in discussion_messages %}
+                <div class="message-item">
+                    <p class="message-meta">{{ message.user.username }} • {{ message.created_at|awst_datetime }}</p>
+                    <p class="message-body">{{ message.content }}</p>
+                </div>
+                {% endfor %}
+            </div>
         </div>
 
-        <div id="itinerary" class="card tab-content">
+        <div id="itinerary" class="card tab-content {% if active_tab == 'itinerary' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Itinerary</h2>
                 <button class="button-primary">+ Add Stop</button>
@@ -435,14 +767,69 @@
             <p class="placeholder">Plan daily activities, travel routes, and points of interest.</p>
         </div>
 
-        <div id="stays" class="card tab-content">
+        <div id="stays" class="card tab-content {% if active_tab == 'stays' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Stays</h2>
                 <button class="button-primary">+ Add Accommodation</button>
             </div>
             <p class="placeholder">Manage lodging options, bookings, and shared accommodations.</p>
         </div>
-     <script>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='inviteparticipants.js') }}"></script>
+    <script>
+        // Get event ID from data attribute (avoids template syntax in JavaScript)
+        const currentEventId = parseInt(document.getElementById('discussion').dataset.eventId, 10);
+        const discussionForm = document.getElementById('discussionForm');
+        const discussionInput = document.getElementById('discussionInput');
+        const discussionMessages = document.getElementById('discussionMessages');
+        const discussionEmptyState = document.getElementById('discussionEmptyState');
+
+        function appendDiscussionMessage(message) {
+            const item = document.createElement('div');
+            item.className = 'message-item';
+
+            const meta = document.createElement('p');
+            meta.className = 'message-meta';
+            meta.textContent = `${message.username} • ${message.created_at}`;
+
+            const body = document.createElement('p');
+            body.className = 'message-body';
+            body.textContent = message.content;
+
+            item.appendChild(meta);
+            item.appendChild(body);
+
+            discussionMessages.prepend(item);
+            discussionMessages.style.display = 'grid';
+            discussionEmptyState.style.display = 'none';
+        }
+
+        const discussionSocket = io();
+        discussionSocket.on('connect', () => {
+            discussionSocket.emit('join_event_room', { event_id: currentEventId });
+        });
+
+        discussionSocket.on('new_discussion_message', appendDiscussionMessage);
+        discussionSocket.on('discussion_error', (payload) => {
+            if (payload && payload.message) {
+                alert(payload.message);
+            }
+        });
+
+        discussionForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const content = discussionInput.value.trim();
+            if (!content) {
+                return;
+            }
+            discussionSocket.emit('post_discussion_message', {
+                event_id: currentEventId,
+                content: content,
+            });
+            discussionInput.value = '';
+        });
+
         function openTab(tabName, button) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));

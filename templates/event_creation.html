@@ -10,63 +10,63 @@
     <body>
         <div class="container-fluid">
             <h1>Create a New Event</h1>
-            <form action="/" id="newEventForm">
+            <form id="newEventForm" novalidate>
                 <div class="form-group">
-                    <label for="event name">Event Name:</label>
-                    <input type="text" class="form-control" id="event name" required>
+                    <label for="eventName">Event Name:</label>
+                    <input type="text" class="form-control" id="eventName" name="title" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="location">Location:</label>
-                    <input type="text" class="form-control" id="location">
+                    <input type="text" class="form-control" id="location" name="location">
                 </div>
 
-                <label for="date and time options">Date and Time:</label>
-                <fieldset class="form-group" id = "date and time options">
+                <label for="dateTimeOptions">Date and Time:</label>
+                <fieldset class="form-group" id="dateTimeOptions">
                     <div class="form-check form-switch">
                         <label class="form-check-label" for="singleDay">Single Day Event</label>
-                        <input class="form-check-input" type="checkbox" role="switch" id="singleDay">
+                        <input class="form-check-input" type="checkbox" role="switch" id="singleDay" name="single_day">
                     </div>
-                    <div class="input-group" id="dates and times">
+                    <div class="input-group" id="datesAndTimes">
                         <span class="input-group-addon"> From: </span>
-                        <input type="date" class="form-control" id="startDate">
-                        <input type="time" class="form-control" id="startTime">
+                        <input type="date" class="form-control" id="startDate" name="start_date" required>
+                        <input type="time" class="form-control" id="startTime" name="start_time" placeholder="Start time" required>
                         <span class="input-group-addon"> Until: </span>
-                        <input type="date" class="form-control" id="finishDate">
-                        <input type="time" class="form-control" id="finishTime">
+                        <input type="date" class="form-control" id="finishDate" name="end_date">
+                        <input type="time" class="form-control" id="finishTime" name="end_time" placeholder="End time">
                     </div>
                 </fieldset>
 
-                <label for="tab checkboxes">Optional Event Tabs:</label>
-                <fieldset id = "tab checkboxes">
+                <label for="tabCheckboxes">Optional Event Tabs:</label>
+                <fieldset id="tabCheckboxes">
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="polls checkbox" value="polls">
-                        <label class="form-check-label" for="polls checkbox">Polls</label>
+                        <input class="form-check-input" type="checkbox" id="pollsCheckbox" value="polls">
+                        <label class="form-check-label" for="pollsCheckbox">Polls</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="expenses checkbox" value="expenses" disabled>
-                        <label class="form-check-label" for="expenses checkbox">Expenses</label>
+                        <input class="form-check-input" type="checkbox" id="expensesCheckbox" value="expenses" disabled>
+                        <label class="form-check-label" for="expensesCheckbox">Expenses</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="discussion checkbox" value="discussion" disabled>
-                        <label class="form-check-label" for="discussion checkbox">Discussion</label>
+                        <input class="form-check-input" type="checkbox" id="discussionCheckbox" value="discussion" disabled>
+                        <label class="form-check-label" for="discussionCheckbox">Discussion</label>
                     </div>
                 </fieldset>
 
                 <div class="form-group">
                     <label for="description">Event Description:</label>
-                    <textarea class="form-control" rows="5" id="description"></textarea>
+                    <textarea class="form-control" rows="5" id="description" name="description"></textarea>
                 </div>
 
                 <div>
-                    <label class="radio-inline"><input type="radio" name="optradio" checked>Private Event</label>
-                    <label class="radio-inline"><input type="radio" name="optradio" disabled>Public Event</label>
+                    <label class="radio-inline"><input type="radio" name="privacy" value="private" checked>Private Event</label>
+                    <label class="radio-inline"><input type="radio" name="privacy" value="public">Public Event</label>
                 </div>
 
                 <input type="submit" class="btn btn-success" value="Create">
             </form>
         </div>
-        <script src="event_creation.js"></script>
+        <script src="{{ url_for('static', filename='event_creation.js') }}"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
     </body>
