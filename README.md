@@ -37,4 +37,3 @@ installs the following:
 - Flask-SQLAlchemy
 - Flask-SocketIO
 - Werkzeug
-- tzdata
