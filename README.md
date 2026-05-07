@@ -27,3 +27,13 @@ Contributors:
 | Mitch Dudarz | 23728478 |
 | Rohma Rehman | 23845362 |
 | Kimi Chong | 23993135 |
+
+
+# Installing and running our website
+
+pip install -r requirements.txt
+installs the following:
+- Flask
+- Flask-SQLAlchemy
+- Flask-SocketIO
+- Werkzeug
