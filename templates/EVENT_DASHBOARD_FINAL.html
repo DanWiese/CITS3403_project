@@ -4,17 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         :root {
-            --bg: #f6f8ff;
+            --bg: #f5f4f1;
             --surface: #ffffff;
-            --surface-soft: #f3f5ff;
-            --text: #111827;
-            --muted: #6b7280;
-            --border: #e5e7eb;
-            --accent: #2563eb;
-            --radius: 28px;
-            --shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+            --surface-alt: #f0eee9;
+            --border: #e5e2db;
+            --text: #1a1814;
+            --text-muted: #8a8680;
+            --accent: #5b3cf5;
+            --accent-light: #ede9ff;
+            --accent-warm: #f59e3c;
+            --accent-warm-light: #fff3e0;
+            --accent-teal: #2dbfb8;
+            --accent-teal-light: #e0f7f6;
+            --accent-rose: #f0456b;
+            --accent-rose-light: #ffe0e8;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --shadow: 0 2px 16px rgba(26,24,20,0.07);
+            --shadow-hover: 0 8px 32px rgba(26,24,20,0.13);
         }
 
         * {
@@ -24,96 +35,106 @@
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: 'Inter', system-ui, sans-serif;
+            font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
             background: var(--bg);
             color: var(--text);
             position: relative;
-            padding-top: 96px;
+            padding-top: 0;
         }
 
-        .page-shell {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 32px 24px 24px;
-        }
+        /* NAV - Now loaded from external styles.css */
 
-        .brand-block {
-            position: absolute;
-            top: 24px;
-            left: 24px;
-            display: inline-flex;
-            align-items: center;
-            gap: 14px;
-            z-index: 1;
-        }
-
-        .brand-icon {
-            width: 48px;
-            height: 48px;
-            display: inline-flex;
+        /* Logout Modal */
+        .logout-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1001;
             align-items: center;
             justify-content: center;
-            border-radius: 18px;
-            background: #5c3dff;
+        }
+
+        .logout-modal.show {
+            display: flex;
+        }
+
+        .logout-modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 300px;
+            text-align: center;
+        }
+
+        .logout-modal-content h3 {
+            margin-top: 0;
+        }
+
+        .logout-modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .logout-modal-actions button {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .confirm-btn {
+            background: #f0456b;
             color: white;
-            font-size: 1.25rem;
-            box-shadow: 0 12px 28px rgba(92, 61, 255, 0.18);
         }
 
-        .brand-name {
-            font-size: 1.2rem;
-            font-weight: 800;
-            letter-spacing: -0.02em;
+        .cancel-btn {
+            background: #e0e0e0;
+            color: #333;
         }
 
-        .back-link,
-        .modify-link {
+        /* MAIN CONTENT */
+        main {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 48px 40px 80px;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 24px;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .back-link {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             text-decoration: none;
             color: var(--text);
             font-weight: 600;
+            font-size: 0.95rem;
+            transition: color 0.2s;
         }
 
-        .page-header {
-            background: var(--surface);
-            border: 1px solid rgba(15, 23, 42, 0.06);
-            border-radius: var(--radius);
-            padding: 32px;
-            box-shadow: var(--shadow);
-            margin-top: 16px;
-        }
-
-        .participant-list {
-            display: grid;
-            gap: 12px;
-            margin-top: 0;
-        }
-
-        .participant-pill {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            background: white;
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: 18px;
-            font-weight: 700;
-            color: var(--text);
-        }
-
-        .participant-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #dde5ff;
+        .back-link:hover {
             color: var(--accent);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            font-weight: 700;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            margin: 0 0 8px;
         }
 
         .page-header-top {
@@ -131,10 +152,16 @@
             color: var(--accent);
             text-decoration: none;
             font-weight: 700;
-            border: 1px solid rgba(37, 99, 235, 0.2);
+            border: 1px solid rgba(91,60,245,0.2);
             padding: 14px 20px;
             border-radius: 999px;
-            background: #eff6ff;
+            background: var(--accent-light);
+            transition: all 0.2s;
+        }
+
+        .modify-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(91,60,245,0.2);
         }
 
         .modify-link::after {
@@ -144,19 +171,14 @@
             line-height: 1;
         }
 
-        .event-title {
-            margin: 0 0 8px;
-            font-size: clamp(2rem, 2.7vw, 3rem);
-            line-height: 1.05;
-        }
-
+        /* TABS */
         .tabs {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 0 24px 32px;
+            max-width: 100%;
+            padding: 0 0 32px;
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
+            animation: fadeUp 0.5s 0.1s ease both;
         }
 
         .tab-button {
@@ -164,37 +186,38 @@
             border-radius: 999px;
             padding: 12px 18px;
             background: var(--surface);
-            color: var(--muted);
+            color: var(--text-muted);
             cursor: pointer;
             transition: all 0.15s ease;
             font-weight: 700;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+            font-size: 0.9rem;
+            box-shadow: 0 2px 8px rgba(26,24,20,0.06);
         }
 
         .tab-button.active {
-            background: var(--accent);
+            background: var(--text);
             color: white;
         }
 
-        .tab-button:hover {
-            background: rgba(37, 99, 235, 0.08);
-            color: var(--accent);
+        .tab-button:hover:not(.active) {
+            background: var(--surface-alt);
+            color: var(--text);
         }
 
-        @media (max-width: 880px) {
-            .header-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
+        /* CARDS */
         .card {
             background: var(--surface);
             border-radius: var(--radius);
-            border: 1px solid rgba(15, 23, 42, 0.06);
+            border: 1px solid var(--border);
             box-shadow: var(--shadow);
             padding: 28px;
             margin: 0 auto 24px;
-            max-width: 1180px;
+            display: none;
+            animation: fadeUp 0.5s 0.2s ease both;
+        }
+
+        .card.active {
+            display: block;
         }
 
         .section-heading {
@@ -202,437 +225,394 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            margin: 0 0 22px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
         }
 
         .section-heading h2 {
             margin: 0;
-            font-size: 1.25rem;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .inline-form {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .inline-form input {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            flex: 1;
+            min-width: 150px;
         }
 
         .button-primary {
+            padding: 10px 18px;
             background: var(--accent);
-            border: none;
             color: white;
-            padding: 12px 18px;
-            border-radius: 14px;
-            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            white-space: nowrap;
         }
 
-        .button-secondary {
-            background: white;
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(91,60,245,0.3);
+        }
+
+        .participant-pill {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--surface-alt);
             border: 1px solid var(--border);
+            border-radius: 18px;
+            font-weight: 600;
             color: var(--text);
-            padding: 12px 18px;
-            border-radius: 14px;
-            font-weight: 700;
-            cursor: pointer;
         }
 
-        .participants-actions {
+        .participant-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-light);
+            color: var(--accent);
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+            flex-shrink: 0;
         }
 
+        .participant-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 0;
+        }
+
+        /* OPTION LIST */
         .option-list {
             display: grid;
-            gap: 18px;
+            gap: 12px;
         }
 
         .option-item {
-            border: 1px solid var(--border);
-            border-radius: 22px;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 18px;
+            display: flex;
             align-items: center;
-            background: var(--surface-soft);
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.2s;
         }
 
-        .option-item.selected {
+        .option-item:hover {
             border-color: var(--accent);
-            background: #eff6ff;
+            background: var(--accent-light);
+        }
+
+        .option-item.done {
+            opacity: 0.6;
         }
 
         .option-info {
-            display: grid;
-            gap: 6px;
-        }
-
-        .option-info p {
-            margin: 0;
+            flex: 1;
         }
 
         .option-title {
+            margin: 0;
             font-weight: 700;
+            color: var(--text);
             font-size: 1rem;
+        }
+
+        .option-subtitle {
+            margin: 4px 0 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
 
         .option-actions {
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
             justify-content: flex-end;
         }
 
         .vote-pill {
-            min-width: 72px;
-            padding: 10px 14px;
-            border-radius: 999px;
-            background: white;
-            border: 1px solid var(--border);
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 8px 14px;
+            border-radius: 20px;
             font-weight: 700;
-            color: var(--text);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .vote-pill span {
-            display: block;
-            font-size: 0.8rem;
-            color: var(--muted);
-        }
-
-        .vote-button,
-        .finalize-button {
-            border: none;
-            border-radius: 14px;
-            padding: 10px 16px;
-            font-weight: 700;
-            cursor: pointer;
+            font-size: 0.85rem;
         }
 
         .vote-button {
-            background: white;
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .finalize-button {
-            background: #16a34a;
+            padding: 8px 14px;
+            background: var(--accent);
             color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+            white-space: nowrap;
         }
 
-        .placeholder {
-            color: var(--muted);
-            line-height: 1.8;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .inline-form {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
-
-        .inline-form input[type="text"],
-        .inline-form input[type="number"] {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 12px 14px;
-            font: inherit;
-            min-width: 180px;
-            background: white;
-        }
-
-        .inline-form input[type="number"] {
-            max-width: 140px;
-        }
-
-        .empty-state {
-            color: var(--muted);
-            margin: 0;
-        }
-
-        .check-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
-        .check-item.done .option-title {
-            text-decoration: line-through;
-            color: var(--muted);
+        .vote-button:hover {
+            transform: scale(1.05);
         }
 
         .total-pill {
-            border-radius: 999px;
-            background: #eff6ff;
-            border: 1px solid rgba(37, 99, 235, 0.25);
-            color: var(--accent);
-            padding: 8px 14px;
+            background: var(--accent-warm-light);
+            color: var(--accent-warm);
+            padding: 10px 16px;
+            border-radius: 20px;
             font-weight: 700;
+            font-size: 0.9rem;
+            white-space: nowrap;
         }
 
-        .check-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 600;
-            color: var(--muted);
-            cursor: pointer;
-        }
-
-        .check-toggle input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #16a34a;
-            cursor: pointer;
-        }
-
+        /* MESSAGE LIST */
         .message-list {
             display: grid;
-            gap: 12px;
+            gap: 16px;
         }
 
         .message-item {
-            background: var(--surface-soft);
+            padding: 16px;
+            background: var(--surface-alt);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 14px;
+            border-radius: 12px;
         }
 
         .message-meta {
-            margin: 0 0 6px;
-            color: var(--muted);
-            font-size: 0.88rem;
+            margin: 0 0 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
         }
 
         .message-body {
             margin: 0;
-            white-space: pre-wrap;
-            line-height: 1.5;
-        }
-
-        .join-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.58);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
-
-        .join-modal.show {
-            display: flex;
-        }
-
-        .join-modal-content {
-            background: white;
-            border-radius: 24px;
-            max-width: 460px;
-            width: 100%;
-            padding: 28px;
-            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
-            text-align: center;
-        }
-
-        .join-modal-content h2 {
-            margin: 0 0 12px;
-            font-size: 1.4rem;
-        }
-
-        .join-modal-content p {
-            margin: 0;
-            color: var(--muted);
+            font-size: 0.95rem;
+            color: var(--text);
             line-height: 1.6;
         }
 
-        .join-modal-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 24px;
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 32px 16px;
+            font-size: 0.95rem;
         }
 
-        .join-modal-actions button {
-            flex: 1;
-            border: none;
-            border-radius: 14px;
-            padding: 12px 16px;
-            font-weight: 700;
-            cursor: pointer;
+        .placeholder {
+            color: var(--text-muted);
+            padding: 32px 16px;
+            text-align: center;
         }
 
-        .btn-cancel {
-            background: #e5e7eb;
-            color: var(--text);
+        .check-item {
+            position: relative;
         }
 
-        .btn-request {
-            background: var(--accent);
-            color: white;
-        }
-
-        .pending-requests {
-            margin-bottom: 22px;
-            padding: 16px;
-            border-radius: 18px;
-            background: #fffbeb;
-            border: 1px solid #facc15;
-        }
-
-        .pending-requests h3 {
-            margin: 0 0 12px;
-            font-size: 1rem;
-            color: #92400e;
-        }
-
-        .request-item {
+        .check-toggle {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 12px 14px;
-            background: white;
-            border-radius: 14px;
-            margin-bottom: 10px;
-        }
-
-        .request-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .request-user {
-            font-weight: 700;
-        }
-
-        .request-actions {
-            display: flex;
             gap: 8px;
-        }
-
-        .request-actions button {
-            border: none;
-            border-radius: 10px;
-            padding: 8px 12px;
-            font-weight: 700;
             cursor: pointer;
+            font-weight: 600;
         }
 
-        .btn-approve {
-            background: #10b981;
-            color: white;
+        .check-toggle input {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
         }
 
-        .btn-reject {
-            background: #ef4444;
-            color: white;
+        /* ANIMATIONS */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            nav {
+                padding: 0 20px;
+                flex-wrap: wrap;
+                height: auto;
+                gap: 10px;
+            }
+
+            .nav-center {
+                order: 3;
+                width: 100%;
+            }
+
+            main {
+                padding: 24px 20px 80px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .tabs {
+                overflow-x: auto;
+            }
+
+            .inline-form {
+                width: 100%;
+            }
+
+            .inline-form input {
+                min-width: 100px;
+            }
+
+            .section-heading {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+        }
+
+        svg {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div class="brand-block">
-        <span class="brand-icon" aria-hidden="true">
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-                <rect x="3" y="4" width="18" height="17" rx="3" stroke="white" stroke-width="2"/>
-                <path d="M8 2v4M16 2v4M3 9h18" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                <circle cx="8" cy="14" r="1.5" fill="white"/>
-                <circle cx="12" cy="14" r="1.5" fill="white"/>
-                <circle cx="16" cy="14" r="1.5" fill="white"/>
-            </svg>
-        </span>
-        <span class="brand-name">Shindig</span>
+<nav>
+  <a href="{{ url_for('dashboard') }}" class="nav-logo">
+    <div class="logo-icon">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="17" rx="3" stroke="white" stroke-width="2"/>
+        <path d="M8 2v4M16 2v4M3 9h18" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="8" cy="14" r="1.5" fill="white"/>
+        <circle cx="12" cy="14" r="1.5" fill="white"/>
+        <circle cx="16" cy="14" r="1.5" fill="white"/>
+      </svg>
     </div>
+    Shindig
+  </a>
+ 
 
-    <div id="joinModal" class="join-modal{% if show_join_modal %} show{% endif %}">
-        <div class="join-modal-content">
-            <h2>Request to join</h2>
-            <p>This is a private event. Send a request to the host and wait for approval.</p>
-            <div class="join-modal-actions">
-                <button type="button" class="btn-cancel" onclick="closeJoinModal()">Cancel</button>
-                <button type="button" class="btn-request" onclick="submitJoinRequest()">Send Request</button>
-            </div>
-        </div>
+    <a href="{{ url_for('new_event') }}" class="nav-btn ghost">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      + Create Event
+    </a>
+  </div>
+ 
+  <div class="nav-right">
+    <div class="user-info">
+      <div class="user-avatar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b3cf5" stroke-width="2.5">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+        </svg>
+      </div>
+      <span id="usernameDisplay">Rohma Rehman</span>
     </div>
+    <button class="logout-btn" title="Log out" onclick="openLogoutModal()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+ 
+<!-- Logout Confirmation Modal -->
+<div id="logoutModal" class="logout-modal">
+  <div class="logout-modal-content">
+    <h3>Log Out</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="logout-modal-actions">
+      <button class="confirm-btn" onclick="confirmLogout()">Log Out</button>
+      <button class="cancel-btn" onclick="closeLogoutModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 
-    <div class="page-shell">
-        <a href="{{ url_for('dashboard') }}" class="back-link">← Back to Dashboard</a>
-
+    <main>
         <div class="page-header">
-            <div class="page-header-top">
-                <div>
-                    <h1 class="event-title">{{ event.title }}</h1>
-                    <p class="event-subtitle">Location: {{ event.location or 'No location set' }}</p>
-                    <p class="event-subtitle" style="margin-top:6px; font-size:0.98rem; color:var(--muted);">
-                        Time: {{ event.start_datetime|awst_datetime }}
-                        {% if event.end_datetime %}
-                        &nbsp;—&nbsp; {{ event.end_datetime|awst_datetime }}
-                        {% endif %}
-                    </p>
-                </div>
+            <div>
+                <a href="/" class="back-link">← Back to Dashboard</a>
+                <h1>{{ event.title }}</h1>
+            </div>
+            {% if event.is_owner %}
+            <a href="{{ url_for('edit_event', event_id=event.id) }}" class="modify-link">Edit Event</a>
+            {% endif %}
+        </div>
+
+        <div class="page-header-top" style="margin-bottom: 24px;">
+            <div>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0 0 8px 0;">
+                    📍 {{ event.location or 'Location TBD' }} • 🕐 {{ event.start_datetime.strftime('%b %d, %Y at %I:%M %p') if event.start_datetime else 'Date TBD' }}
+                </p>
             </div>
         </div>
 
         <div class="tabs">
-            <button class="tab-button {% if active_tab == 'overview' %}active{% endif %}" onclick="openTab('overview', this)">🧭 Overview</button>
-            <button class="tab-button {% if active_tab == 'participants' %}active{% endif %}" onclick="openTab('participants', this)">👥 Participants</button>
-            <button class="tab-button {% if active_tab == 'voting' %}active{% endif %}" onclick="openTab('voting', this)">📅 Voting</button>
-            <button class="tab-button {% if active_tab == 'discussion' %}active{% endif %}" onclick="openTab('discussion', this)">💬 Discussion</button>
-            <button class="tab-button {% if active_tab == 'expenses' %}active{% endif %}" onclick="openTab('expenses', this)">💲 Expenses</button>
-            <button class="tab-button {% if active_tab == 'checklist' %}active{% endif %}" onclick="openTab('checklist', this)">✅ Checklist</button>
-            <button class="tab-button {% if active_tab == 'stays' %}active{% endif %}" onclick="openTab('stays', this)">🏠 Stays</button>
+            <button class="tab-button {% if active_tab == 'overview' %}active{% endif %}" onclick="openTab('overview', this)">Overview</button>
+            <button class="tab-button {% if active_tab == 'participants' %}active{% endif %}" onclick="openTab('participants', this)">Participants</button>
+            <button class="tab-button {% if active_tab == 'voting' %}active{% endif %}" onclick="openTab('voting', this)">Date Options</button>
+            <button class="tab-button {% if active_tab == 'expenses' %}active{% endif %}" onclick="openTab('expenses', this)">Expenses</button>
+            <button class="tab-button {% if active_tab == 'checklist' %}active{% endif %}" onclick="openTab('checklist', this)">Checklist</button>
+            <button class="tab-button {% if active_tab == 'discussion' %}active{% endif %}" onclick="openTab('discussion', this)">Discussion</button>
+            <button class="tab-button {% if active_tab == 'itinerary' %}active{% endif %}" onclick="openTab('itinerary', this)">Itinerary</button>
+            <button class="tab-button {% if active_tab == 'stays' %}active{% endif %}" onclick="openTab('stays', this)">Stays</button>
         </div>
 
-        <div id="overview" class="card tab-content {% if active_tab == 'overview' %}active{% endif %}">
+        <!-- OVERVIEW TAB -->
+        <div id="overview" class="card {% if active_tab == 'overview' %}active{% endif %}">
             <div class="section-heading">
-                <h2>Overview</h2>
+                <h2>Event Overview</h2>
             </div>
-            <p class="placeholder">{{ event.description or 'No description provided.' }}</p>
+            <p style="color: var(--text-muted); line-height: 1.8;">{{ event.description or 'No description provided.' }}</p>
+            {% if event.link %}
+            <p><a href="{{ event.link }}" target="_blank" style="color: var(--accent); font-weight: 600;">View Event Link →</a></p>
+            {% endif %}
         </div>
 
-        <div id="participants" class="card tab-content {% if active_tab == 'participants' %}active{% endif %}">
+        <!-- PARTICIPANTS TAB -->
+        <div id="participants" class="card {% if active_tab == 'participants' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Participants</h2>
-                {% if event_is_owner %}
-                <div class="participants-actions">
-                    <button class="button-secondary" type="button" onclick="shareEventInvite()">Add Participant</button>
-                    <form method="post" action="{{ url_for('join_event', event_id=event.id) }}">
-                        <button class="button-primary" type="submit">Joined</button>
-                    </form>
-                </div>
-                {% elif not event.is_private or current_participant %}
-                <form method="post" action="{{ url_for('join_event', event_id=event.id) }}">
-                    <button class="button-primary" type="submit">
-                        {% if current_participant %}Joined{% else %}Join Event{% endif %}
-                    </button>
+                <form method="post" action="{{ url_for('request_join_event', token=invite_token) }}" class="inline-form" style="margin-bottom: 0;">
+                    <button class="button-primary" type="submit">+ Request to Join</button>
                 </form>
-                {% endif %}
             </div>
-
-            {% if event_is_owner and pending_requests %}
-            <div class="pending-requests">
-                <h3>Pending Join Requests</h3>
-                {% for req in pending_requests %}
-                <div class="request-item">
-                    <span class="request-user">{{ req.user.username }}</span>
-                    <div class="request-actions">
-                        <form method="post" action="{{ url_for('approve_join_request', event_id=event.id, request_id=req.id) }}">
-                            <button type="submit" class="btn-approve">Approve</button>
-                        </form>
-                        <form method="post" action="{{ url_for('reject_join_request', event_id=event.id, request_id=req.id) }}">
-                            <button type="submit" class="btn-reject">Reject</button>
-                        </form>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
             {% if participants %}
             <div class="participant-list">
                 {% for participant in participants %}
@@ -647,7 +627,8 @@
             {% endif %}
         </div>
 
-        <div id="voting" class="card tab-content {% if active_tab == 'voting' %}active{% endif %}">
+        <!-- VOTING TAB -->
+        <div id="voting" class="card {% if active_tab == 'voting' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Date Options</h2>
                 <form method="post" action="{{ url_for('add_vote_option', event_id=event.id) }}" class="inline-form">
@@ -679,7 +660,8 @@
             {% endif %}
         </div>
 
-        <div id="expenses" class="card tab-content {% if active_tab == 'expenses' %}active{% endif %}">
+        <!-- EXPENSES TAB -->
+        <div id="expenses" class="card {% if active_tab == 'expenses' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Expenses</h2>
                 <div class="total-pill">Running Total: ${{ '%.2f'|format(expense_total) }}</div>
@@ -708,7 +690,8 @@
             {% endif %}
         </div>
 
-        <div id="checklist" class="card tab-content {% if active_tab == 'checklist' %}active{% endif %}">
+        <!-- CHECKLIST TAB -->
+        <div id="checklist" class="card {% if active_tab == 'checklist' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Checklist</h2>
                 <form method="post" action="{{ url_for('add_checklist_item', event_id=event.id) }}" class="inline-form">
@@ -740,7 +723,8 @@
             {% endif %}
         </div>
 
-        <div id="discussion" class="card tab-content {% if active_tab == 'discussion' %}active{% endif %}" data-event-id="{{ event.id }}" data-share-url="{{ share_url or '' }}" data-invite-token="{{ invite_token or '' }}" data-request-url="{{ url_for('request_join_event', token=invite_token) if invite_token else '' }}">
+        <!-- DISCUSSION TAB -->
+        <div id="discussion" class="card {% if active_tab == 'discussion' %}active{% endif %}" data-event-id="{{ event.id }}" data-share-url="{{ share_url or '' }}" data-invite-token="{{ invite_token or '' }}" data-request-url="{{ url_for('request_join_event', token=invite_token) if invite_token else '' }}">
             <div class="section-heading">
                 <h2>Discussion</h2>
                 <form id="discussionForm" method="post" action="{{ url_for('add_discussion_message', event_id=event.id) }}" class="inline-form" style="margin-bottom: 0;">
@@ -759,7 +743,8 @@
             </div>
         </div>
 
-        <div id="itinerary" class="card tab-content {% if active_tab == 'itinerary' %}active{% endif %}">
+        <!-- ITINERARY TAB -->
+        <div id="itinerary" class="card {% if active_tab == 'itinerary' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Itinerary</h2>
                 <button class="button-primary">+ Add Stop</button>
@@ -767,18 +752,62 @@
             <p class="placeholder">Plan daily activities, travel routes, and points of interest.</p>
         </div>
 
-        <div id="stays" class="card tab-content {% if active_tab == 'stays' %}active{% endif %}">
+        <!-- STAYS TAB -->
+        <div id="stays" class="card {% if active_tab == 'stays' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Stays</h2>
                 <button class="button-primary">+ Add Accommodation</button>
             </div>
             <p class="placeholder">Manage lodging options, bookings, and shared accommodations.</p>
         </div>
+    </main>
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='inviteparticipants.js') }}"></script>
     <script>
-        // Get event ID from data attribute (avoids template syntax in JavaScript)
+        // Load user info on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/api/user');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('usernameDisplay').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Failed to load user info:', error);
+            }
+        });
+
+        // Logout Modal Functions
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.add('show');
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('show');
+        }
+
+        function confirmLogout() {
+            window.location.href = '/logout';
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('logoutModal').addEventListener('click', (e) => {
+            if (e.target.id === 'logoutModal') {
+                closeLogoutModal();
+            }
+        });
+
+        // Tab Navigation
+        function openTab(tabName, button) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.card').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            button.classList.add('active');
+        }
+
+        // Discussion Socket
         const currentEventId = parseInt(document.getElementById('discussion').dataset.eventId, 10);
         const discussionForm = document.getElementById('discussionForm');
         const discussionInput = document.getElementById('discussionInput');
@@ -829,14 +858,6 @@
             });
             discussionInput.value = '';
         });
-
-        function openTab(tabName, button) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            button.classList.add('active');
-        }
     </script>
-
 </body>
 </html>
