@@ -4,7 +4,6 @@ from flask_migrate import Migrate
 from flask_socketio import SocketIO, join_room, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import json
 import os
 import secrets
 import socket
@@ -74,7 +73,6 @@ class Event(db.Model):
     start_datetime = db.Column(db.DateTime, nullable=False)
     end_datetime = db.Column(db.DateTime, nullable=True)
     is_private = db.Column(db.Boolean, default=True, nullable=False)
-    selected_tabs = db.Column(db.Text, default='[]', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     owner = db.relationship('User', backref=db.backref('events', lazy=True))
@@ -418,13 +416,6 @@ def create_event():
     end_time = (data.get('end_time') or '').strip()
     is_private = str(data.get('is_private', 'true')).lower() in {'true', '1', 'yes', 'on'}
 
-    selected_tabs = data.get('selected_tabs', [])
-    if isinstance(selected_tabs, str):
-        try:
-            selected_tabs = json.loads(selected_tabs)
-        except json.JSONDecodeError:
-            selected_tabs = [selected_tabs] if selected_tabs else []
-
     if not title:
         return jsonify({'success': False, 'message': 'Event name is required'}), 400
 
@@ -454,7 +445,6 @@ def create_event():
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         is_private=is_private,
-        selected_tabs=json.dumps(selected_tabs),
     )
 
     db.session.add(event)
