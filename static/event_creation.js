@@ -57,27 +57,54 @@ async function submission(event) {
         selected_tabs: selectedTabs
     };
 
-    const response = await fetch("/events", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-    });
+    if (document.getElementById("pageTitle").textContent == "Create Event") { 
 
-    let result = {};
-    try {
-        result = await response.json();
-    } catch (error) {
-        result = { message: "Unable to create event." };
+        const response = await fetch("/events", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+    
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (error) {
+            result = { message: "Unable to create event." };
+        }
+
+        if (!response.ok) {
+            alert(result.message || "Unable to create event.");
+            return;
+        }
+        
+        window.location.href = result.redirect_url || "/dashboard";
+    
+    } else if (document.getElementById("pageTitle").textContent == "Edit Event") { // Modifying an existing event
+        const url = document.getElementById("submissionURL").content;
+        const response = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (error) {
+            result = { message: "Unable to modify event." };
+        }
+
+        if (!response.ok) {
+            alert(result.message || "Unable to modify event.");
+            return;
+        }
+        
+        window.location.href = result.redirect_url || "/dashboard";
     }
-
-    if (!response.ok) {
-        alert(result.message || "Unable to create event.");
-        return;
-    }
-
-    window.location.href = result.redirect_url || "/dashboard";
 }
 
 function validateTimes() {
