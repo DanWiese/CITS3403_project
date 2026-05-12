@@ -388,6 +388,18 @@ def event_dashboard(event_id):
     return render_event_dashboard(event, active_tab=active_tab)
 
 
+@app.route('/events/<int:event_id>/delete', methods=['POST'])
+@login_required
+def delete_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != session['user_id']:
+        abort(403)
+
+    db.session.delete(event)
+    db.session.commit()
+    return redirect(url_for('dashboard'))
+
+
 @app.route('/invite/<string:token>')
 @login_required
 def invite_event(token):
