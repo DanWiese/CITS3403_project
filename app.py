@@ -266,7 +266,7 @@ def render_event_modification(event):
 
     return render_template('event_creation.html', 
                            event=event, 
-                           page_title='Edit Event', 
+                           page_type='Edit', 
                            is_private=event.is_private,
                            start_date=start_date, 
                            start_time=start_time, 
@@ -416,7 +416,7 @@ def invite_event(token):
 def new_event():
     """Event creation page"""
     return render_template('event_creation.html', event=None, 
-                           page_title='Create Event', is_private=True, 
+                           page_type='Create', is_private=True, 
                            start_date='', start_time='', end_date='', end_time='')
 
 @app.route('/events/<int:event_id>/edit')

@@ -591,6 +591,13 @@
         <div id="overview" class="card tab-content {% if active_tab == 'overview' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Overview</h2>
+                {% if event_is_owner %}
+                <div class="participants-actions">
+                    <form method="get" action="{{ url_for('edit_event', event_id=event.id) }}">
+                        <button class="button-secondary" type="submit">Edit Event</button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
             <p class="placeholder">{{ event.description or 'No description provided.' }}</p>
         </div>

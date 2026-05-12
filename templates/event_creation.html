@@ -6,12 +6,12 @@
         {% if event %}
             <meta id="submissionURL" name="submission_url" content="{{ url_for('modify_event', event_id=event.id) }}">
         {% endif %}
-        <title>{{ page_title }}</title>
+        <title>{{ page_type }} Event</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     </head>
     <body>
         <div class="container-fluid">
-            <h1 id="pageTitle">{{ page_title }}</h1>
+            <h1 id="pageTitle">{{ page_type }} Event</h1>
             <form id="newEventForm" novalidate>
                 <div class="form-group">
                     <label for="eventName">Event Name:</label>
@@ -65,7 +65,7 @@
                     <label class="radio-inline"><input type="radio" name="privacy" value="public" {% if is_private == False %} checked {% endif %}>Public Event</label>
                 </div>
 
-                <input type="submit" class="btn btn-success" value="Create">
+                <input type="submit" class="btn btn-success" value="{{ page_type }}">
             </form>
         </div>
         <script src="{{ url_for('static', filename='event_creation.js') }}"></script>
