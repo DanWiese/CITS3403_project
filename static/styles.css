@@ -91,13 +91,15 @@ nav {
 }
 
 .nav-btn.ghost {
-  background: transparent;
-  color: var(--text-muted);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .nav-btn.ghost:hover {
-  background: var(--surface-alt);
-  color: var(--text);
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 12px rgba(91,60,245,0.3);
 }
 
 .nav-right {
