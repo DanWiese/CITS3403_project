@@ -27,6 +27,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 socketio = SocketIO(app, async_mode='threading')
 
+def utc_now():
+    return datetime.utcnow()
+
+
+@event.listens_for(Engine, "connect")
+def enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 def get_share_url(path):
     """Generate a shareable URL using the network hostname instead of localhost"""
     # Get the hostname that can be accessed over the network
