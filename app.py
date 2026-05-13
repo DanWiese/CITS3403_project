@@ -226,14 +226,40 @@ class EventVote(db.Model):
 
 class EventExpense(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    paid_by_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
+
     title = db.Column(db.String(120), nullable=False)
     amount = db.Column(db.Float, nullable=False, default=0.0)
-    paid_by = db.Column(db.String(80), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('expenses', lazy=True, cascade='all, delete-orphan'))
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 
+    event = db.relationship(
+        'Event',
+        backref=db.backref('expenses', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    payer = db.relationship('User', backref=db.backref('expenses_paid', lazy=True))
+
+    __table_args__ = (
+        db.CheckConstraint('amount >= 0', name='ck_event_expense_amount_nonnegative'),
+    )
+
+    @property
+    def paid_by(self):
+        return self.payer.username if self.payer else 'Unknown'
 
 class EventChecklistItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
