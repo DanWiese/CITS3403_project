@@ -121,12 +121,45 @@ class Event(db.Model):
 
 class EventParticipant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('participant_links', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User')
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    role = db.Column(db.String(20), default='participant', nullable=False)
+    rsvp_status = db.Column(db.String(20), default='going', nullable=False)
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('participant_links', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    user = db.relationship('User', backref=db.backref('event_participations', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'user_id', name='uq_event_participant'),
+        db.CheckConstraint(
+            "role IN ('owner', 'participant')",
+            name='ck_event_participant_role'
+        ),
+        db.CheckConstraint(
+            "rsvp_status IN ('going', 'maybe', 'not_going')",
+            name='ck_event_participant_rsvp_status'
+        ),
+    )
+
 
 
 class EventVoteOption(db.Model):
