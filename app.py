@@ -263,12 +263,33 @@ class EventExpense(db.Model):
 
 class EventChecklistItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    assigned_to_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
+
     title = db.Column(db.String(120), nullable=False)
     completed = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('checklist_items', lazy=True, cascade='all, delete-orphan'))
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('checklist_items', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    assigned_user = db.relationship('User')
 
 
 class EventDiscussionMessage(db.Model):
