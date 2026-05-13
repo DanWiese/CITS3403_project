@@ -164,21 +164,64 @@ class EventParticipant(db.Model):
 
 class EventVoteOption(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    title = db.Column(db.String(120), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('vote_options', lazy=True, cascade='all, delete-orphan'))
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    title = db.Column(db.String(120), nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('vote_options', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'title', name='uq_event_vote_option_title'),
+    )
 
 
 class EventVote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    option_id = db.Column(db.Integer, db.ForeignKey('event_vote_option.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    option = db.relationship('EventVoteOption', backref=db.backref('votes', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User')
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    option_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event_vote_option.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+
+    event = db.relationship('Event')
+    option = db.relationship(
+        'EventVoteOption',
+        backref=db.backref('votes', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+    user = db.relationship('User', backref=db.backref('votes', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'user_id', name='uq_one_vote_per_user_per_event'),
+    )
+
 
 
 class EventExpense(db.Model):
