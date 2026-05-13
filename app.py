@@ -80,17 +80,40 @@ class User(db.Model):
 
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    title = db.Column(db.String(120), nullable=False)
-    location = db.Column(db.String(120), nullable=True)
-    description = db.Column(db.Text, nullable=True)
-    start_datetime = db.Column(db.DateTime, nullable=False)
-    end_datetime = db.Column(db.DateTime, nullable=True)
-    is_private = db.Column(db.Boolean, default=True, nullable=False)
-    selected_tabs = db.Column(db.Text, default='[]', nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    owner = db.relationship('User', backref=db.backref('events', lazy=True))
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    title = db.Column(db.String(120), nullable=False)
+    location = db.Column(db.String(200), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    start_datetime = db.Column(db.DateTime, nullable=False, index=True)
+    end_datetime = db.Column(db.DateTime, nullable=True)
+
+    is_private = db.Column(db.Boolean, default=True, nullable=False)
+
+    selected_tabs = db.Column(db.JSON, default=list, nullable=False)
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    owner = db.relationship(
+        'User',
+        backref=db.backref('events', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            'end_datetime IS NULL OR end_datetime >= start_datetime',
+            name='ck_event_end_after_start'
+        ),
+        db.Index('ix_event_user_start', 'user_id', 'start_datetime'),
+    )
 
     def __repr__(self):
         return f'<Event {self.title}>'
