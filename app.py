@@ -294,13 +294,31 @@ class EventChecklistItem(db.Model):
 
 class EventDiscussionMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('discussion_messages', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User')
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('discussion_messages', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    user = db.relationship('User', backref=db.backref('discussion_messages', lazy=True))
+
 
 
 class EventInviteToken(db.Model):
