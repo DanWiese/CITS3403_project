@@ -319,27 +319,61 @@ class EventDiscussionMessage(db.Model):
 
     user = db.relationship('User', backref=db.backref('discussion_messages', lazy=True))
 
-
-
 class EventInviteToken(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
     token = db.Column(db.String(64), unique=True, nullable=False, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)
 
-    event = db.relationship('Event', backref=db.backref('invite_tokens', lazy=True, cascade='all, delete-orphan'))
-
+    event = db.relationship(
+        'Event',
+        backref=db.backref('invite_tokens', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
 
 class EventJoinRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    status = db.Column(db.String(20), default='pending', nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('join_requests', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User')
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    status = db.Column(db.String(20), default='pending', nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('join_requests', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    user = db.relationship('User', backref=db.backref('join_requests', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'user_id', name='uq_event_join_request'),
+        db.CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')",
+            name='ck_event_join_request_status'
+        ),
+    )
 
 # Create tables
 with app.app_context():
