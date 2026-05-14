@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, abort
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_socketio import SocketIO, join_room, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -25,6 +26,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 socketio = SocketIO(app, async_mode='threading')
 
 def utc_now():
@@ -419,6 +421,10 @@ def get_or_create_event_invite(event):
 
 
 def render_event_dashboard(event, active_tab='overview', allow_invite_access=False, invite_token=None):
+    allowed_tabs = {'overview', 'participants', 'voting', 'expenses', 'checklist', 'discussion'}
+    if active_tab not in allowed_tabs:
+        active_tab = 'overview'
+
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
     is_owner = event.user_id == session['user_id']
 
@@ -468,6 +474,21 @@ def render_event_dashboard(event, active_tab='overview', allow_invite_access=Fal
         pending_requests=pending_requests,
         event_is_owner=is_owner,
     )
+
+def render_event_modification(event):
+    start_date = event.start_datetime.date()
+    start_time = event.start_datetime.time()
+    end_date = event.end_datetime.date()
+    end_time = event.end_datetime.time()
+
+    return render_template('event_creation.html', 
+                           event=event, 
+                           page_type='Edit', 
+                           is_private=event.is_private,
+                           start_date=start_date, 
+                           start_time=start_time, 
+                           end_date=end_date, 
+                           end_time=end_time, )
 
 # ============ ROUTES ============
 
@@ -599,6 +620,18 @@ def event_dashboard(event_id):
     return render_event_dashboard(event, active_tab=active_tab)
 
 
+@app.route('/events/<int:event_id>/delete', methods=['POST'])
+@login_required
+def delete_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != session['user_id']:
+        abort(403)
+
+    db.session.delete(event)
+    db.session.commit()
+    return redirect(url_for('dashboard'))
+
+
 @app.route('/invite/<string:token>')
 @login_required
 def invite_event(token):
@@ -611,8 +644,16 @@ def invite_event(token):
 @login_required
 def new_event():
     """Event creation page"""
-    return render_template('event_creation.html')
+    return render_template('event_creation.html', event=None, 
+                           page_type='Create', is_private=True, 
+                           start_date='', start_time='', end_date='', end_time='')
 
+@app.route('/events/<int:event_id>/edit')
+@login_required
+def edit_event(event_id):
+    """Event modification page"""
+    event = Event.query.get_or_404(event_id)
+    return render_event_modification(event)
 
 @app.route('/events', methods=['POST'])
 @login_required
@@ -629,13 +670,6 @@ def create_event():
     end_time = (data.get('end_time') or '').strip()
     is_private = str(data.get('is_private', 'true')).lower() in {'true', '1', 'yes', 'on'}
 
-    selected_tabs = data.get('selected_tabs', [])
-    if isinstance(selected_tabs, str):
-        try:
-            selected_tabs = json.loads(selected_tabs)
-        except json.JSONDecodeError:
-            selected_tabs = [selected_tabs] if selected_tabs else []
-
     if not title:
         return jsonify({'success': False, 'message': 'Event name is required'}), 400
 
@@ -648,7 +682,7 @@ def create_event():
             if end_time:
                 end_datetime = datetime.fromisoformat(f'{end_date}T{end_time}')
             else: 
-                end_datetime = datetime.fromisoformat(f'end_date')
+                end_datetime = datetime.fromisoformat(f'{end_date}T00:00:00')
             if end_datetime < start_datetime:
                 return jsonify({'success': False, 'message': 'End date and time must be after the start date and time'}), 400
         else:     
@@ -665,7 +699,6 @@ def create_event():
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         is_private=is_private,
-        selected_tabs=json.dumps(selected_tabs),
     )
 
     db.session.add(event)
@@ -682,6 +715,61 @@ def create_event():
         'redirect_url': url_for('dashboard')
     }), 201
 
+@app.route('/events/<int:event_id>/modifying', methods=['PUT'])
+@login_required
+def modify_event(event_id):
+    """Modifying an existing event from the event creation form"""
+    event = Event.query.get_or_404(event_id)
+    if session['user_id'] != event.user_id:
+        return jsonify({'success': False, 'message': 'Only the event owner may edit an event'}), 400
+
+    data = request.get_json(silent=True) or request.form
+
+    title = (data.get('title') or '').strip()
+    location = (data.get('location') or '').strip()
+    description = (data.get('description') or '').strip()
+    start_date = (data.get('start_date') or '').strip()
+    start_time = (data.get('start_time') or '').strip()
+    end_date = (data.get('end_date') or '').strip()
+    end_time = (data.get('end_time') or '').strip()
+    is_private = str(data.get('is_private', 'true')).lower() in {'true', '1', 'yes', 'on'}
+
+    if not title:
+        return jsonify({'success': False, 'message': 'An event name is required'}), 400
+
+    if not start_date or not start_time:
+        return jsonify({'success': False, 'message': 'Start date and time are required'}), 400
+
+    try:
+        start_datetime = datetime.fromisoformat(f'{start_date}T{start_time}')
+        if end_date:
+            if end_time:
+                end_datetime = datetime.fromisoformat(f'{end_date}T{end_time}')
+            else: 
+                end_datetime = datetime.fromisoformat(f'{end_date}T00:00:00')
+            if end_datetime < start_datetime:
+                return jsonify({'success': False, 'message': 'End date and time must be after the start date and time'}), 400
+        else:     
+            end_datetime = None
+            
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid date or time format'}), 400
+
+    event.title = title
+    event.location = location
+    event.description = description
+    event.start_datetime = start_datetime
+    event.end_datetime = end_datetime
+    event.is_private = is_private
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Event updated successfully',
+        'event_id': event.id,
+        'redirect_url': url_for('dashboard')
+    }), 200
 
 @app.route('/event-dashboard/<int:event_id>/join', methods=['POST'])
 @login_required
