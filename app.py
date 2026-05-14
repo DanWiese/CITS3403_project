@@ -85,7 +85,7 @@ class Event(db.Model):
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('user.id', ondelete='CASCADE'),
+        db.ForeignKey('user.id', ondelete='CASCADE', name='fk_event_user_id'),
         nullable=False,
         index=True
     )
@@ -125,14 +125,14 @@ class EventParticipant(db.Model):
 
     event_id = db.Column(
         db.Integer,
-        db.ForeignKey('event.id', ondelete='CASCADE'),
+        db.ForeignKey('event.id', ondelete='CASCADE', name='fk_event_participant_event_id'),
         nullable=False,
         index=True
     )
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('user.id', ondelete='CASCADE'),
+        db.ForeignKey('user.id', ondelete='CASCADE', name='fk_event_participant_user_id'),
         nullable=False,
         index=True
     )
@@ -168,7 +168,7 @@ class EventVoteOption(db.Model):
 
     event_id = db.Column(
         db.Integer,
-        db.ForeignKey('event.id', ondelete='CASCADE'),
+        db.ForeignKey('event.id', ondelete='CASCADE', name='fk_event_vote_option_event_id'),
         nullable=False,
         index=True
     )
@@ -191,21 +191,21 @@ class EventVote(db.Model):
 
     event_id = db.Column(
         db.Integer,
-        db.ForeignKey('event.id', ondelete='CASCADE'),
+        db.ForeignKey('event.id', ondelete='CASCADE', name='fk_event_vote_event_id'),
         nullable=False,
         index=True
     )
 
     option_id = db.Column(
         db.Integer,
-        db.ForeignKey('event_vote_option.id', ondelete='CASCADE'),
+        db.ForeignKey('event_vote_option.id', ondelete='CASCADE', name='fk_event_vote_option_option_id'),
         nullable=False,
         index=True
     )
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('user.id', ondelete='CASCADE'),
+        db.ForeignKey('user.id', ondelete='CASCADE', name='fk_event_vote_user_id'),
         nullable=False,
         index=True
     )
@@ -230,14 +230,14 @@ class EventExpense(db.Model):
 
     event_id = db.Column(
         db.Integer,
-        db.ForeignKey('event.id', ondelete='CASCADE'),
+        db.ForeignKey('event.id', ondelete='CASCADE', name='fk_event_expense_event_id'),
         nullable=False,
         index=True
     )
 
     paid_by_user_id = db.Column(
         db.Integer,
-        db.ForeignKey('user.id', ondelete='SET NULL'),
+        db.ForeignKey('user.id', ondelete='SET NULL', name='fk_event_expense_paid_by_user_id'),
         nullable=True,
         index=True
     )
@@ -267,14 +267,14 @@ class EventChecklistItem(db.Model):
 
     event_id = db.Column(
         db.Integer,
-        db.ForeignKey('event.id', ondelete='CASCADE'),
+        db.ForeignKey('event.id', ondelete='CASCADE', name='fk_event_checklist_item_event_id'),
         nullable=False,
         index=True
     )
 
     assigned_to_user_id = db.Column(
         db.Integer,
-        db.ForeignKey('user.id', ondelete='SET NULL'),
+        db.ForeignKey('user.id', ondelete='SET NULL', name='fk_event_checklist_item_assigned_to_user_id'),
         nullable=True,
         index=True
     )
@@ -298,14 +298,14 @@ class EventDiscussionMessage(db.Model):
 
     event_id = db.Column(
         db.Integer,
-        db.ForeignKey('event.id', ondelete='CASCADE'),
+        db.ForeignKey('event.id', ondelete='CASCADE', name='fk_event_discussion_message_event_id'),
         nullable=False,
         index=True
     )
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('user.id', ondelete='CASCADE'),
+        db.ForeignKey('user.id', ondelete='CASCADE', name='fk_event_discussion_message_user_id'),
         nullable=False,
         index=True
     )
@@ -325,7 +325,7 @@ class EventInviteToken(db.Model):
 
     event_id = db.Column(
         db.Integer,
-        db.ForeignKey('event.id', ondelete='CASCADE'),
+        db.ForeignKey('event.id', ondelete='CASCADE', name='fk_event_invite_token_event_id'),
         nullable=False,
         index=True
     )
@@ -345,14 +345,14 @@ class EventJoinRequest(db.Model):
 
     event_id = db.Column(
         db.Integer,
-        db.ForeignKey('event.id', ondelete='CASCADE'),
+        db.ForeignKey('event.id', ondelete='CASCADE', name='fk_event_join_request_event_id'),
         nullable=False,
         index=True
     )
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('user.id', ondelete='CASCADE'),
+        db.ForeignKey('user.id', ondelete='CASCADE', name='fk_event_join_request_user_id'),
         nullable=False,
         index=True
     )
@@ -703,7 +703,7 @@ def create_event():
     db.session.add(event)
     db.session.commit()
 
-    owner_participant = EventParticipant(event_id=event.id, user_id=session['user_id'])
+    owner_participant = EventParticipant(event_id=event.id, user_id=session['user_id'], role='owner')
     db.session.add(owner_participant)
     db.session.commit()
 
@@ -778,7 +778,7 @@ def join_event(event_id):
     if event.is_private and event.user_id != session['user_id'] and participant is None:
         abort(403)
     if participant is None:
-        new_participant = EventParticipant(event_id=event.id, user_id=session['user_id'])
+        new_participant = EventParticipant(event_id=event.id, user_id=session['user_id'], role='participant')
         db.session.add(new_participant)
         db.session.commit()
     return redirect(url_for('event_dashboard', event_id=event.id, tab='participants'))
@@ -819,7 +819,7 @@ def approve_join_request(event_id, request_id):
 
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=join_request.user_id).first()
     if participant is None:
-        db.session.add(EventParticipant(event_id=event.id, user_id=join_request.user_id))
+        db.session.add(EventParticipant(event_id=event.id, user_id=join_request.user_id, role='participant'))
 
     db.session.commit()
     return redirect(url_for('event_dashboard', event_id=event.id, tab='participants'))
