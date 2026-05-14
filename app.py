@@ -464,7 +464,7 @@ def create_event():
             if end_time:
                 end_datetime = datetime.fromisoformat(f'{end_date}T{end_time}')
             else: 
-                end_datetime = datetime.fromisoformat(f'{end_date}')
+                end_datetime = datetime.fromisoformat(f'{end_date}T00:00:00')
             if end_datetime < start_datetime:
                 return jsonify({'success': False, 'message': 'End date and time must be after the start date and time'}), 400
         else:     
@@ -535,7 +535,7 @@ def modify_event(event_id):
             if end_time:
                 end_datetime = datetime.fromisoformat(f'{end_date}T{end_time}')
             else: 
-                end_datetime = datetime.fromisoformat(f'end_date')
+                end_datetime = datetime.fromisoformat(f'{end_date}T00:00:00')
             if end_datetime < start_datetime:
                 return jsonify({'success': False, 'message': 'End date and time must be after the start date and time'}), 400
         else:     
