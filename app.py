@@ -11,7 +11,7 @@ import socket
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import UniqueConstraint, CheckConstraint, event
+from sqlalchemy import UniqueConstraint, CheckConstraint, MetaData, event
 from sqlalchemy.engine import Engine
 
 # Initialize Flask app
@@ -24,8 +24,15 @@ app.config['SECRET_KEY'] = os.urandom(24).hex() #protects user sessions
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///shindig.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+metadata_obj = MetaData(naming_convention={
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+})
 # Initialize database
-db = SQLAlchemy(app)
+db = SQLAlchemy(app, metadata=metadata_obj)
 migrate = Migrate(app, db)
 socketio = SocketIO(app, async_mode='threading')
 
