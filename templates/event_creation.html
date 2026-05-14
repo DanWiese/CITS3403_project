@@ -39,22 +39,6 @@
                     </div>
                 </fieldset>
 
-                <label for="tabCheckboxes">Optional Event Tabs:</label>
-                <fieldset id="tabCheckboxes">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="pollsCheckbox" value="polls" {% if 'polls' in event.selected_tabs %} checked {% endif %}>
-                        <label class="form-check-label" for="pollsCheckbox">Polls</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="expensesCheckbox" value="expenses" {% if 'expenses' in event.selected_tabs %} checked {% endif %}>
-                        <label class="form-check-label" for="expensesCheckbox">Expenses</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="discussionCheckbox" value="discussion" {% if 'discussion' in event.selected_tabs %} checked {% endif %}>
-                        <label class="form-check-label" for="discussionCheckbox">Discussion</label>
-                    </div>
-                </fieldset>
-
                 <div class="form-group">
                     <label for="description">Event Description:</label>
                     <textarea class="form-control" rows="5" id="description" name="description">{{ event.description if event }}</textarea>

@@ -3,9 +3,6 @@ const startDate = document.getElementById("startDate");
 const startTime = document.getElementById("startTime");
 const finishDate = document.getElementById("finishDate");
 const finishTime = document.getElementById("finishTime");
-const pollsCheckbox = document.getElementById("pollsCheckbox");
-const expensesCheckbox = document.getElementById("expensesCheckbox");
-const discussionCheckbox = document.getElementById("discussionCheckbox");
 
 singleDayCheckbox.addEventListener("change", singleDaySwitched);
 startDate.addEventListener("input", syncSingleDayDates);
@@ -38,11 +35,6 @@ async function submission(event) {
         return;
     }
 
-    const selectedTabs = [];
-    if (pollsCheckbox.checked) selectedTabs.push("polls");
-    if (expensesCheckbox.checked) selectedTabs.push("expenses");
-    if (discussionCheckbox.checked) selectedTabs.push("discussion");
-
     const privacyChoice = document.querySelector('input[name="privacy"]:checked');
 
     const payload = {
@@ -53,8 +45,7 @@ async function submission(event) {
         start_time: startTime.value,
         end_date: finishDate.value,
         end_time: finishTime.value,
-        is_private: !privacyChoice || privacyChoice.value === "private",
-        selected_tabs: selectedTabs
+        is_private: !privacyChoice || privacyChoice.value === "private"
     };
 
     if (document.getElementById("pageTitle").textContent == "Create Event") { 
