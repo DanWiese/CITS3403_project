@@ -99,7 +99,6 @@ class Event(db.Model):
 
     is_private = db.Column(db.Boolean, default=True, nullable=False)
 
-    selected_tabs = db.Column(db.JSON, default=list, nullable=False)
 
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
