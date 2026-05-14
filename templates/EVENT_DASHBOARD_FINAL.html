@@ -590,8 +590,6 @@
             <button class="tab-button {% if active_tab == 'expenses' %}active{% endif %}" onclick="openTab('expenses', this)">Expenses</button>
             <button class="tab-button {% if active_tab == 'checklist' %}active{% endif %}" onclick="openTab('checklist', this)">Checklist</button>
             <button class="tab-button {% if active_tab == 'discussion' %}active{% endif %}" onclick="openTab('discussion', this)">Discussion</button>
-            <button class="tab-button {% if active_tab == 'itinerary' %}active{% endif %}" onclick="openTab('itinerary', this)">Itinerary</button>
-            <button class="tab-button {% if active_tab == 'stays' %}active{% endif %}" onclick="openTab('stays', this)">Stays</button>
         </div>
 
         <!-- OVERVIEW TAB -->
@@ -750,23 +748,6 @@
             </div>
         </div>
 
-        <!-- ITINERARY TAB -->
-        <div id="itinerary" class="card {% if active_tab == 'itinerary' %}active{% endif %}">
-            <div class="section-heading">
-                <h2>Itinerary</h2>
-                <button class="button-primary">+ Add Stop</button>
-            </div>
-            <p class="placeholder">Plan daily activities, travel routes, and points of interest.</p>
-        </div>
-
-        <!-- STAYS TAB -->
-        <div id="stays" class="card {% if active_tab == 'stays' %}active{% endif %}">
-            <div class="section-heading">
-                <h2>Stays</h2>
-                <button class="button-primary">+ Add Accommodation</button>
-            </div>
-            <p class="placeholder">Manage lodging options, bookings, and shared accommodations.</p>
-        </div>
     </main>
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>

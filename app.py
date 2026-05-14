@@ -207,6 +207,10 @@ def get_or_create_event_invite(event):
 
 
 def render_event_dashboard(event, active_tab='overview', allow_invite_access=False, invite_token=None):
+    allowed_tabs = {'overview', 'participants', 'voting', 'expenses', 'checklist', 'discussion'}
+    if active_tab not in allowed_tabs:
+        active_tab = 'overview'
+
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
     is_owner = event.user_id == session['user_id']
 
@@ -516,13 +520,6 @@ def modify_event(event_id):
     end_time = (data.get('end_time') or '').strip()
     is_private = str(data.get('is_private', 'true')).lower() in {'true', '1', 'yes', 'on'}
 
-    selected_tabs = data.get('selected_tabs', [])
-    if isinstance(selected_tabs, str):
-        try:
-            selected_tabs = json.loads(selected_tabs)
-        except json.JSONDecodeError:
-            selected_tabs = [selected_tabs] if selected_tabs else []
-
     if not title:
         return jsonify({'success': False, 'message': 'An event name is required'}), 400
 
@@ -550,7 +547,6 @@ def modify_event(event_id):
     event.start_datetime = start_datetime
     event.end_datetime = end_datetime
     event.is_private = is_private
-    event.selected_tabs = json.dumps(selected_tabs)
 
     db.session.commit()
 
