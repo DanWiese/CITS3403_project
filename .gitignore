@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Between old migrations, differs between different copies of the database
+# To remove from local git:
+# git rm --cached 0a43986f4f83_remove_selected_tabs_column_from_event.py
+migrations/versions/0a43986f4f83_remove_selected_tabs_column_from_event.py
