@@ -11,6 +11,8 @@ import socket
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import UniqueConstraint, CheckConstraint, MetaData, event
+from sqlalchemy.engine import Engine
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -22,10 +24,27 @@ app.config['SECRET_KEY'] = os.urandom(24).hex() #protects user sessions
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///shindig.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+metadata_obj = MetaData(naming_convention={
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+})
 # Initialize database
-db = SQLAlchemy(app)
+db = SQLAlchemy(app, metadata=metadata_obj)
 migrate = Migrate(app, db)
 socketio = SocketIO(app, async_mode='threading')
+
+def utc_now():
+    return datetime.utcnow()
+
+
+@event.listens_for(Engine, "connect")
+def enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 def get_share_url(path):
     """Generate a shareable URL using the network hostname instead of localhost"""
@@ -53,30 +72,56 @@ def get_share_url(path):
     port = request.environ.get('SERVER_PORT', '5001')
     return f"{scheme}://{ip_address}:{port}{path}"
 
-# User model
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+
+    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     def __repr__(self):
         return f'<User {self.username}>'
 
 
+
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    title = db.Column(db.String(120), nullable=False)
-    location = db.Column(db.String(120), nullable=True)
-    description = db.Column(db.Text, nullable=True)
-    start_datetime = db.Column(db.DateTime, nullable=False)
-    end_datetime = db.Column(db.DateTime, nullable=True)
-    is_private = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    owner = db.relationship('User', backref=db.backref('events', lazy=True))
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    title = db.Column(db.String(120), nullable=False)
+    location = db.Column(db.String(200), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    start_datetime = db.Column(db.DateTime, nullable=False, index=True)
+    end_datetime = db.Column(db.DateTime, nullable=True)
+
+    is_private = db.Column(db.Boolean, default=True, nullable=False)
+
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    owner = db.relationship(
+        'User',
+        backref=db.backref('events', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            'end_datetime IS NULL OR end_datetime >= start_datetime',
+            name='ck_event_end_after_start'
+        ),
+        db.Index('ix_event_user_start', 'user_id', 'start_datetime'),
+    )
 
     def __repr__(self):
         return f'<Event {self.title}>'
@@ -84,84 +129,259 @@ class Event(db.Model):
 
 class EventParticipant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('participant_links', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User')
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    role = db.Column(db.String(20), default='participant', nullable=False)
+    rsvp_status = db.Column(db.String(20), default='going', nullable=False)
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('participant_links', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    user = db.relationship('User', backref=db.backref('event_participations', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'user_id', name='uq_event_participant'),
+        db.CheckConstraint(
+            "role IN ('owner', 'participant')",
+            name='ck_event_participant_role'
+        ),
+        db.CheckConstraint(
+            "rsvp_status IN ('going', 'maybe', 'not_going')",
+            name='ck_event_participant_rsvp_status'
+        ),
+    )
+
 
 
 class EventVoteOption(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    title = db.Column(db.String(120), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('vote_options', lazy=True, cascade='all, delete-orphan'))
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    title = db.Column(db.String(120), nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('vote_options', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'title', name='uq_event_vote_option_title'),
+    )
 
 
 class EventVote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    option_id = db.Column(db.Integer, db.ForeignKey('event_vote_option.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    option = db.relationship('EventVoteOption', backref=db.backref('votes', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User')
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    option_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event_vote_option.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+
+    event = db.relationship('Event')
+    option = db.relationship(
+        'EventVoteOption',
+        backref=db.backref('votes', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+    user = db.relationship('User', backref=db.backref('votes', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'user_id', name='uq_one_vote_per_user_per_event'),
+    )
+
 
 
 class EventExpense(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    paid_by_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
+
     title = db.Column(db.String(120), nullable=False)
     amount = db.Column(db.Float, nullable=False, default=0.0)
-    paid_by = db.Column(db.String(80), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('expenses', lazy=True, cascade='all, delete-orphan'))
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 
+    event = db.relationship(
+        'Event',
+        backref=db.backref('expenses', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    payer = db.relationship('User', backref=db.backref('expenses_paid', lazy=True))
+
+    __table_args__ = (
+        db.CheckConstraint('amount >= 0', name='ck_event_expense_amount_nonnegative'),
+    )
+
+    @property
+    def paid_by(self):
+        return self.payer.username if self.payer else 'Unknown'
 
 class EventChecklistItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    assigned_to_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
+
     title = db.Column(db.String(120), nullable=False)
     completed = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('checklist_items', lazy=True, cascade='all, delete-orphan'))
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('checklist_items', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    assigned_user = db.relationship('User')
 
 
 class EventDiscussionMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 
-    event = db.relationship('Event', backref=db.backref('discussion_messages', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User')
+    event = db.relationship(
+        'Event',
+        backref=db.backref('discussion_messages', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
 
+    user = db.relationship('User', backref=db.backref('discussion_messages', lazy=True))
 
 class EventInviteToken(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
     token = db.Column(db.String(64), unique=True, nullable=False, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)
 
-    event = db.relationship('Event', backref=db.backref('invite_tokens', lazy=True, cascade='all, delete-orphan'))
-
+    event = db.relationship(
+        'Event',
+        backref=db.backref('invite_tokens', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
 
 class EventJoinRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    status = db.Column(db.String(20), default='pending', nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    event = db.relationship('Event', backref=db.backref('join_requests', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User')
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey('event.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    status = db.Column(db.String(20), default='pending', nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    event = db.relationship(
+        'Event',
+        backref=db.backref('join_requests', lazy=True, cascade='all, delete-orphan', passive_deletes=True)
+    )
+
+    user = db.relationship('User', backref=db.backref('join_requests', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'user_id', name='uq_event_join_request'),
+        db.CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')",
+            name='ck_event_join_request_status'
+        ),
+    )
 
 # Create tables
 with app.app_context():
@@ -490,7 +710,7 @@ def create_event():
     db.session.add(event)
     db.session.commit()
 
-    owner_participant = EventParticipant(event_id=event.id, user_id=session['user_id'])
+    owner_participant = EventParticipant(event_id=event.id, user_id=session['user_id'], role='owner')
     db.session.add(owner_participant)
     db.session.commit()
 
@@ -656,7 +876,7 @@ def cast_vote(event_id, option_id):
         db.session.delete(existing_vote)
         db.session.commit()
 
-    db.session.add(EventVote(option_id=option.id, user_id=session['user_id']))
+    db.session.add(EventVote(event_id=event.id, option_id=option.id, user_id=session['user_id']))
     db.session.commit()
     return redirect(url_for('event_dashboard', event_id=event.id, tab='voting'))
 
@@ -675,7 +895,7 @@ def add_expense(event_id):
     except ValueError:
         amount = 0.0
     if title:
-        db.session.add(EventExpense(event_id=event.id, title=title, amount=amount, paid_by=session.get('username')))
+        db.session.add(EventExpense(event_id=event.id, paid_by_user_id=session['user_id'], title=title, amount=amount))
         db.session.commit()
     return redirect(url_for('event_dashboard', event_id=event.id, tab='expenses'))
 
