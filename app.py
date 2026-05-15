@@ -710,7 +710,7 @@ def create_event():
     db.session.add(event)
     db.session.commit()
 
-    owner_participant = EventParticipant(event_id=event.id, user_id=session['user_id'])
+    owner_participant = EventParticipant(event_id=event.id, user_id=session['user_id'], role='owner')
     db.session.add(owner_participant)
     db.session.commit()
 
@@ -876,7 +876,7 @@ def cast_vote(event_id, option_id):
         db.session.delete(existing_vote)
         db.session.commit()
 
-    db.session.add(EventVote(option_id=option.id, user_id=session['user_id']))
+    db.session.add(EventVote(event_id=event.id, option_id=option.id, user_id=session['user_id']))
     db.session.commit()
     return redirect(url_for('event_dashboard', event_id=event.id, tab='voting'))
 
@@ -895,7 +895,7 @@ def add_expense(event_id):
     except ValueError:
         amount = 0.0
     if title:
-        db.session.add(EventExpense(event_id=event.id, title=title, amount=amount, paid_by=session.get('username')))
+        db.session.add(EventExpense(event_id=event.id, paid_by_user_id=session['user_id'], title=title, amount=amount))
         db.session.commit()
     return redirect(url_for('event_dashboard', event_id=event.id, tab='expenses'))
 
