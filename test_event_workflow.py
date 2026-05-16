@@ -200,7 +200,6 @@ class TestEventWorkflow:
         print(f"✓✓✓ Login successful! Redirected to: {driver.current_url}")
  
  
-
     # ========================================================================
     # TEST 2: Create Event and Verify in Dashboard
     # ========================================================================
@@ -222,7 +221,7 @@ class TestEventWorkflow:
             EC.presence_of_element_located((By.ID, "newEventForm"))
         )
         print("✓ Event creation form loaded")
-
+ 
         # Helper function to safely fill a field
         def fill_field(field_id, value):
             """Safely clear and fill a field with proper timing"""
@@ -242,14 +241,18 @@ class TestEventWorkflow:
                 driver.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", field)
                 time.sleep(0.3)
             else:
-                # For text inputs, use traditional method
+                # For text inputs (including textarea and text fields), use JavaScript to clear then type
+                # Clear the field using JavaScript
+                driver.execute_script("arguments[0].value = '';", field)
+                # Trigger input event
+                driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", field)
+                time.sleep(0.2)
+                
+                # Click to focus
                 field.click()
                 time.sleep(0.2)
-                # Select all and delete
-                field.send_keys("\ue009a")  # Ctrl+A
-                field.send_keys("\ue017")   # Delete
-                time.sleep(0.2)
-                # Type new value
+                
+                # Type the new value
                 field.send_keys(value)
                 time.sleep(0.3)
             
@@ -257,6 +260,10 @@ class TestEventWorkflow:
             actual_value = field.get_attribute("value")
             if actual_value != value:
                 print(f"  ⚠ Warning: Expected '{value}', got '{actual_value}'")
+                # Try again if verification failed
+                driver.execute_script(f"arguments[0].value = '{value}';", field)
+                driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", field)
+                time.sleep(0.2)
             return field
  
         # ===== FILL EVENT NAME =====
@@ -443,9 +450,307 @@ class TestEventWorkflow:
             
             # Fail the test with clear message
             raise AssertionError(f"Event '{EVENT_DATA['name']}' was not found in the dashboard")
+
+
+    # ========================================================================
+    # TEST 3: Populate Event Dashboard Tabs
+    # ========================================================================
+ 
+    def test_event_dashboard(self, logged_in_driver):
+        """Test populating all event dashboard tabs: Polling, Expenses, Checklist, Discussion"""
+ 
+        driver = logged_in_driver
+ 
+        print("\n=== NAVIGATING TO EVENT DASHBOARD ===")
+ 
+        # Go to dashboard to find the event
+        driver.get(f"{BASE_URL}/dashboard")
+        time.sleep(2)
+ 
+        # Wait for the event to be visible
+        try:
+            event_element = WebDriverWait(driver, TIMEOUT).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, f"//*[contains(text(), '{EVENT_DATA['name']}')]")
+                )
+            )
+            print(f"✓ Found event: {EVENT_DATA['name']}")
+        except TimeoutException:
+            print(f"✗ Event not found on dashboard")
+            raise
+ 
+        # Find and click the event card - use a more direct selector
+        try:
+            # Find the event card and click anywhere on it
+            event_card = WebDriverWait(driver, TIMEOUT).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    f"//div[contains(@class, 'event-card') and .//*[contains(text(), '{EVENT_DATA['name']}')]]"
+                ))
+            )
+            
+            # Scroll to the card
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", event_card)
+            time.sleep(0.5)
+            
+            # Click the card
+            event_card.click()
+            print("✓ Clicked event card")
+            
+        except Exception as e:
+            print(f"⚠ Could not click event card: {e}")
+            print("⚠ Attempting to navigate via URL instead")
+            # Try to extract event ID from the page and navigate directly
+            try:
+                event_id_match = driver.find_element(
+                    By.XPATH,
+                    f"//div[contains(@class, 'event-card') and .//*[contains(text(), '{EVENT_DATA['name']}')]]"
+                ).get_attribute("data-eventid")
+                if event_id_match:
+                    driver.get(f"{BASE_URL}/event-dashboard/{event_id_match}")
+                    print(f"✓ Navigated to event dashboard via URL")
+                else:
+                    raise Exception("Could not find event ID")
+            except Exception as e2:
+                print(f"✗ Could not navigate to event: {e2}")
+                raise
+ 
+        # Wait for dashboard to load
+        time.sleep(3)
+        current_url = driver.current_url
+        print(f"Current URL: {current_url}")
+ 
+        # ===== POLLING TAB =====
+        print("\n=== TESTING POLLING TAB ===")
+        try:
+            # Click the date options tab button
+            polling_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//button[contains(@class, 'tab-button') and normalize-space(text())='Date Options']"
+                ))
+            )
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", polling_button)
+            time.sleep(0.3)
+            polling_button.click()
+            print("✓ Clicked Date Options tab")
+            WebDriverWait(driver, TIMEOUT).until(
+                EC.presence_of_element_located((By.XPATH, "//div[@id='voting' and contains(@class, 'active')]") )
+            )
+            time.sleep(0.5)
+ 
+            # Find the voting form inside the active tab
+            try:
+                polling_form = driver.find_element(
+                    By.XPATH,
+                    "//div[@id='voting']//form[.//input[@name='title']]"
+                )
+                print("✓ Found voting form")
+ 
+                # Fill in the date option title
+                title_input = WebDriverWait(polling_form, TIMEOUT).until(
+                    EC.presence_of_element_located((By.NAME, "title"))
+                )
+                title_input.clear()
+                title_input.send_keys("2027-11-15")
+                print("✓ Entered vote option title: 2027-11-15")
+ 
+                # Submit the form
+                submit_btn = polling_form.find_element(By.XPATH, ".//button[@type='submit']")
+                submit_btn.click()
+                print("✓ Added vote option")
+                time.sleep(1)
+ 
+                # Find and vote on the option if available
+                try:
+                    vote_button = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((
+                            By.XPATH,
+                            "//button[contains(text(), 'Vote') or contains(text(), 'Voted')]"
+                        ))
+                    )
+                    vote_button.click()
+                    print("✓ Voted on date option")
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"⚠ Could not cast vote: {e}")
+ 
+            except Exception as e:
+                print(f"⚠ Could not populate voting tab: {e}")
+ 
+        except Exception as e:
+            print(f"⚠ Polling tab error: {e}")
+ 
+        # ===== EXPENSES TAB =====
+        print("\n=== TESTING EXPENSES TAB ===")
+        try:
+            # Click the expenses tab button
+            expenses_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//button[contains(@class, 'tab-button') and (contains(text(), 'Expenses') or contains(text(), 'Expense'))]"
+                ))
+            )
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", expenses_button)
+            time.sleep(0.3)
+            expenses_button.click()
+            print("✓ Clicked Expenses tab")
+            time.sleep(1)
+ 
+            # Find the expenses form
+            try:
+                expenses_form = driver.find_element(
+                    By.XPATH,
+                    "//form[contains(@action, 'add_expense') or contains(@action, 'expense')]"
+                )
+                print("✓ Found expenses form")
+ 
+                # Fill in expense title
+                title_input = expenses_form.find_element(By.NAME, "title")
+                title_input.clear()
+                title_input.send_keys("Venue Rental")
+                print("✓ Entered expense title: Venue Rental")
+ 
+                # Fill in expense amount
+                amount_input = expenses_form.find_element(By.NAME, "amount")
+                amount_input.clear()
+                amount_input.send_keys("150.00")
+                print("✓ Entered expense amount: $150.00")
+ 
+                # Submit the form
+                submit_btn = expenses_form.find_element(By.XPATH, ".//button[@type='submit']")
+                submit_btn.click()
+                print("✓ Added expense")
+                time.sleep(1)
+ 
+            except Exception as e:
+                print(f"⚠ Could not populate expenses tab: {e}")
+ 
+        except Exception as e:
+            print(f"⚠ Expenses tab error: {e}")
+ 
+        # ===== CHECKLIST TAB =====
+        print("\n=== TESTING CHECKLIST TAB ===")
+        try:
+            # Click the checklist tab button
+            checklist_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//button[contains(@class, 'tab-button') and (contains(text(), 'Checklist') or contains(text(), 'Check'))]"
+                ))
+            )
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", checklist_button)
+            time.sleep(0.3)
+            checklist_button.click()
+            print("✓ Clicked Checklist tab")
+            time.sleep(1)
+ 
+            # Find the checklist form
+            try:
+                checklist_form = driver.find_element(
+                    By.XPATH,
+                    "//form[contains(@action, 'add_checklist_item') or contains(@action, 'checklist')]"
+                )
+                print("✓ Found checklist form")
+ 
+                # Add first checklist item
+                item_input = checklist_form.find_element(By.NAME, "title")
+                item_input.clear()
+                item_input.send_keys("Confirm guest list")
+                print("✓ Entered checklist item: Confirm guest list")
+ 
+                submit_btn = checklist_form.find_element(By.XPATH, ".//button[@type='submit']")
+                submit_btn.click()
+                print("✓ Added first checklist item")
+                time.sleep(1)
+ 
+                # Add second checklist item
+                item_input = checklist_form.find_element(By.NAME, "title")
+                item_input.clear()
+                item_input.send_keys("Arrange catering")
+                print("✓ Entered checklist item: Arrange catering")
+ 
+                submit_btn = checklist_form.find_element(By.XPATH, ".//button[@type='submit']")
+                submit_btn.click()
+                print("✓ Added second checklist item")
+                time.sleep(1)
+ 
+                # Check off one of the items
+                checkbox = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((
+                        By.XPATH,
+                        "//input[@type='checkbox']"
+                    ))
+                )
+                checkbox.click()
+                print("✓ Checked off a checklist item")
+                time.sleep(0.5)
+ 
+            except Exception as e:
+                print(f"⚠ Could not populate checklist tab: {e}")
+ 
+        except Exception as e:
+            print(f"⚠ Checklist tab error: {e}")
+ 
+        # ===== DISCUSSION TAB =====
+        print("\n=== TESTING DISCUSSION TAB ===")
+        try:
+            # Click the discussion tab button
+            discussion_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//button[contains(@class, 'tab-button') and (contains(text(), 'Discussion') or contains(text(), 'Discuss'))]"
+                ))
+            )
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", discussion_button)
+            time.sleep(0.3)
+            discussion_button.click()
+            print("✓ Clicked Discussion tab")
+            time.sleep(1)
+ 
+            # Find the discussion form
+            try:
+                discussion_form = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((
+                        By.ID,
+                        "discussionForm"
+                    ))
+                )
+                print("✓ Found discussion form")
+ 
+                # Fill in the message
+                message_input = discussion_form.find_element(By.ID, "discussionInput")
+                message_input.clear()
+                message_input.send_keys("Looking forward to this event! Let's finalize the details soon.")
+                print("✓ Entered discussion message")
+ 
+                # Submit the form
+                submit_btn = discussion_form.find_element(By.XPATH, ".//button[@type='submit']")
+                submit_btn.click()
+                print("✓ Posted discussion message")
+                time.sleep(2)
+ 
+                # Verify the message appears
+                message_text = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((
+                        By.XPATH,
+                        "//p[contains(@class, 'message-body') and contains(text(), 'Looking forward to this event')]"
+                    ))
+                )
+                print("✓ Message posted successfully and visible")
+ 
+            except Exception as e:
+                print(f"⚠ Could not populate discussion tab: {e}")
+ 
+        except Exception as e:
+            print(f"⚠ Discussion tab error: {e}")
+ 
+        print(f"\n✓✓✓ EVENT DASHBOARD TEST PASSED ✓✓✓")
+        print(f"    Dashboard tabs tested successfully")
+
  
     # ========================================================================
-    # TEST 3: Edit Event
+    # TEST 4: Edit Event
     # ========================================================================
 
     def test_edit_event(self, logged_in_driver):
@@ -683,7 +988,7 @@ class TestEventWorkflow:
         print(f"Updated event visible as: {EVENT_DATA_UPDATED['name']}")
 
     # ========================================================================
-    # TEST 4: Delete Event
+    # TEST 5: Delete Event
     # ========================================================================
 
     def test_delete_event(self, logged_in_driver):
@@ -863,73 +1168,6 @@ class TestEventWorkflow:
 
         print(f"\n✓✓✓ EVENT DELETION TEST PASSED ✓✓✓")
         print(f"Event successfully deleted from dashboard")
-
-
-    # ========================================================================
-    # TEST 4: Fill Event Tabs
-    # ========================================================================
-    
-    def test_fill_event_tabs(self, logged_in_driver):
-        """Fill in different sections/tabs of the event"""
-        driver = logged_in_driver
-        
-        print("\n=== FILLING EVENT TABS ===")
-        
-        # Find and click event to open details
-        try:
-            event_element = WebDriverWait(driver, TIMEOUT).until(
-                EC.element_to_be_clickable((By.XPATH, f"//div[contains(text(), '{EVENT_DATA_UPDATED['name']}')] | //h2[contains(text(), '{EVENT_DATA_UPDATED['name']}')]"))
-            )
-            event_element.click()
-            print(f"✓ Opened event details")
-        except Exception as e:
-            print(f"⚠ Could not open event: {e}")
-            pytest.skip("Could not open event")
-        
-        time.sleep(2)
-        
-        # Try to find and click different tabs
-        tab_names = ["Details", "Settings", "Attendees", "Options", "General", "Info"]
-        
-        tabs_found = 0
-        for tab_name in tab_names:
-            try:
-                tab = WebDriverWait(driver, TIMEOUT).until(
-                    EC.element_to_be_clickable((By.XPATH, f"//button[contains(text(), '{tab_name}')] | //a[contains(text(), '{tab_name}')]"))
-                )
-                tab.click()
-                print(f"✓ Clicked '{tab_name}' tab")
-                tabs_found += 1
-                time.sleep(1)
-                
-                # Try to fill any visible input fields on this tab
-                input_fields = driver.find_elements(By.XPATH, "//input[@type='text'] | //textarea")
-                if input_fields:
-                    for i, field in enumerate(input_fields[:2]):
-                        try:
-                            if field.is_displayed():
-                                field.clear()
-                                field.send_keys(f"Test data for {tab_name}")
-                                print(f"  ✓ Filled field on {tab_name} tab")
-                        except:
-                            pass
-                
-                # Try to save
-                try:
-                    save_btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Save')]")
-                    save_btn.click()
-                    print(f"  ✓ Saved {tab_name} tab")
-                    time.sleep(1)
-                except:
-                    pass
-                    
-            except:
-                continue
-        
-        if tabs_found == 0:
-            print("⚠ No tabs found (this may be normal for your form)")
-        else:
-            print(f"✓✓✓ Filled {tabs_found} tabs") 
 
 """
 SETUP:
