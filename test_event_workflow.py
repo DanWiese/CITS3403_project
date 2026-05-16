@@ -33,9 +33,9 @@ LOGIN_CREDENTIALS = {
 EVENT_DATA = {
     "name": "Test Event",                      # Event Name field
     "location": "Test Location",               # Location field
-    "date_from": "11/11/2027",                # From date (dd/mm/yyyy format)
+    "date_from": "2027-11-11",                # From date (YYYY-MM-DD format)
     "time_from": "14:30",                     # From time
-    "date_until": "11/12/2027",               # Until date (dd/mm/yyyy format)
+    "date_until": "2027-12-11",               # Until date (YYYY-MM-DD format)
     "time_until": "15:30",                    # Until time
     "description": "This is a test event created by Selenium automation", # Description
     "event_type": "Private",                  # Private or Public
@@ -45,9 +45,9 @@ EVENT_DATA = {
 EVENT_DATA_UPDATED = {
     "name": "Updated Test Event",
     "location": "Updated Location",
-    "date_from": "11/11/2027",
+    "date_from": "2027-11-11",
     "time_from": "15:45",
-    "date_until": "11/12/2027",
+    "date_until": "2027-12-11",
     "time_until": "16:45",
     "description": "This event has been updated by Selenium",
     "event_type": "Public",
@@ -440,90 +440,240 @@ class TestEventWorkflow:
     # ========================================================================
     # TEST 3: Edit Event
     # ========================================================================
-    
+ 
     def test_edit_event(self, logged_in_driver):
-        """Edit the created event"""
+        """Edit an existing event and verify changes"""
+ 
         driver = logged_in_driver
-        
+ 
         print("\n=== EDITING EVENT ===")
-        
-        # Find the event in the list
-        try:
-            event_element = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.XPATH, f"//div[contains(text(), '{EVENT_DATA['name']}')] | //h2[contains(text(), '{EVENT_DATA['name']}')]"))
+ 
+        # Go to dashboard
+        driver.get(f"{BASE_URL}/dashboard")
+ 
+        # Wait for event to appear
+        WebDriverWait(driver, TIMEOUT).until(
+            EC.presence_of_element_located(
+                (By.XPATH, f"//*[contains(text(), '{EVENT_DATA['name']}')]")
             )
-            print(f"✓ Found event: {EVENT_DATA['name']}")
-        except:
-            print("⚠ Event not found")
-            pytest.skip("Event not found in list")
-        
-        # Find and click edit button
-        try:
-            edit_btn = WebDriverWait(driver, TIMEOUT).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Edit')] | //a[contains(text(), 'Edit')]"))
-            )
-            edit_btn.click()
-            print("✓ Clicked Edit button")
-        except Exception as e:
-            print(f"⚠ Could not click Edit: {e}")
-            pytest.skip("Edit button not found")
-        
+        )
+ 
+        print(f"✓ Found event: {EVENT_DATA['name']}")
+ 
+        # Click the Edit button for this event on the dashboard
+        edit_button = WebDriverWait(driver, TIMEOUT).until(
+            EC.element_to_be_clickable((
+                By.XPATH,
+                f"//div[contains(@class, 'event-card') and .//*[contains(text(), '{EVENT_DATA['name']}')]]//a[@title='Edit']"
+            ))
+        )
+        edit_href = edit_button.get_attribute('href')
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", edit_button)
+        time.sleep(0.5)
+        edit_button.click()
+ 
+        print("✓ Clicked Edit Event")
+ 
+        # Wait for edit page navigation; fall back to direct URL if needed
         time.sleep(2)
-        
-        # Update Event Name
+        current_url = driver.current_url
+        print(f"Current URL after click: {current_url}")
+        if edit_href and current_url == f"{BASE_URL}/dashboard":
+            print("⚠ Click did not navigate; using direct edit URL")
+            driver.get(edit_href)
+ 
+        # Wait for edit form
+        WebDriverWait(driver, TIMEOUT).until(
+            EC.presence_of_element_located((By.ID, "newEventForm"))
+        )
+ 
+        print("✓ Edit form loaded")
+ 
+        # Verify edit page title
         try:
-            name_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Event Name'] | //input[@id='event-name'] | //input[@name='name']"))
-            )
-            name_field.clear()
-            name_field.send_keys(EVENT_DATA_UPDATED["name"])
-            print(f"✓ Updated Event Name: {EVENT_DATA_UPDATED['name']}")
+            page_title = driver.find_element(By.ID, "pageTitle").text.strip()
+            assert page_title == "Edit Event", f"Expected edit page title, got '{page_title}'"
+            print("✓ Confirmed Edit Event page")
         except Exception as e:
-            print(f"⚠ Could not update Event Name: {e}")
-        
-        # Update Location
-        try:
-            location_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Location']"))
+            print(f"⚠ Could not confirm edit page title: {e}")
+ 
+        # Helper function to safely fill a field
+        def fill_field(field_id, value):
+            """Safely clear and fill a field with proper timing"""
+            field = WebDriverWait(driver, TIMEOUT).until(
+                EC.presence_of_element_located((By.ID, field_id))
             )
-            location_field.clear()
-            location_field.send_keys(EVENT_DATA_UPDATED["location"])
-            print(f"✓ Updated Location: {EVENT_DATA_UPDATED['location']}")
-        except:
-            pass
-        
-        # Update description
+            # Scroll into view
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", field)
+            time.sleep(0.3)
+            
+            # For date and time inputs, use JavaScript to set the value directly
+            field_type = field.get_attribute("type")
+            if field_type in ["date", "time", "datetime-local"]:
+                # Use JavaScript for date/time inputs (more reliable)
+                driver.execute_script(f"arguments[0].value = '{value}';", field)
+                # Trigger change event
+                driver.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", field)
+                time.sleep(0.3)
+            else:
+                # For text inputs, use traditional method
+                field.click()
+                time.sleep(0.2)
+                # Triple-click to select all text
+                field.send_keys("\ue000")  # Home key
+                field.send_keys("\ue009" + "a")  # Shift+End to select
+                field.send_keys("\ue003")  # Delete/Backspace
+                time.sleep(0.2)
+                # Type new value
+                field.send_keys(value)
+                time.sleep(0.3)
+            
+            # Verify the value was set
+            actual_value = field.get_attribute("value")
+            if actual_value != value:
+                print(f"  ⚠ Warning: Expected '{value}', got '{actual_value}'")
+            return field
+ 
+        # ===== UPDATE EVENT NAME =====
         try:
-            desc_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.XPATH, "//textarea[@placeholder='Event Description'] | //textarea[@id='description']"))
-            )
-            desc_field.clear()
-            desc_field.send_keys(EVENT_DATA_UPDATED["description"])
-            print(f"✓ Updated Description")
-        except:
-            pass
-        
-        # Save changes
-        try:
-            save_btn = WebDriverWait(driver, TIMEOUT).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Save')] | //button[contains(text(), 'Update')]"))
-            )
-            save_btn.click()
-            print("✓ Clicked Save button")
+            fill_field("eventName", EVENT_DATA_UPDATED["name"])
+            print(f"✓ Updated name: {EVENT_DATA_UPDATED['name']}")
         except Exception as e:
-            print(f"⚠ Could not click Save: {e}")
-        
+            print(f"✗ Failed to update name: {e}")
+ 
+        # ===== UPDATE LOCATION =====
+        try:
+            fill_field("location", EVENT_DATA_UPDATED["location"])
+            print(f"✓ Updated location: {EVENT_DATA_UPDATED['location']}")
+        except Exception as e:
+            print(f"✗ Failed to update location: {e}")
+ 
+        # ===== UPDATE DESCRIPTION =====
+        try:
+            fill_field("description", EVENT_DATA_UPDATED["description"])
+            print("✓ Updated description")
+        except Exception as e:
+            print(f"✗ Failed to update description: {e}")
+ 
+        # ===== UPDATE START DATE =====
+        try:
+            fill_field("startDate", EVENT_DATA_UPDATED["date_from"])
+            print(f"✓ Updated start date: {EVENT_DATA_UPDATED['date_from']}")
+        except Exception as e:
+            print(f"✗ Failed to update start date: {e}")
+ 
+        # ===== UPDATE START TIME =====
+        try:
+            fill_field("startTime", EVENT_DATA_UPDATED["time_from"])
+            print(f"✓ Updated start time: {EVENT_DATA_UPDATED['time_from']}")
+        except Exception as e:
+            print(f"✗ Failed to update start time: {e}")
+ 
+        # ===== UPDATE END DATE =====
+        try:
+            fill_field("finishDate", EVENT_DATA_UPDATED["date_until"])
+            print(f"✓ Updated end date: {EVENT_DATA_UPDATED['date_until']}")
+        except Exception as e:
+            print(f"✗ Failed to update end date: {e}")
+ 
+        # ===== UPDATE END TIME =====
+        try:
+            fill_field("finishTime", EVENT_DATA_UPDATED["time_until"])
+            print(f"✓ Updated end time: {EVENT_DATA_UPDATED['time_until']}")
+        except Exception as e:
+            print(f"✗ Failed to update end time: {e}")
+ 
+        # ===== CHANGE PRIVACY =====
+        try:
+            if EVENT_DATA_UPDATED["event_type"] == "Public":
+                public_radio = WebDriverWait(driver, TIMEOUT).until(
+                    EC.element_to_be_clickable((
+                        By.XPATH,
+                        "//input[@type='radio'][@value='public']"
+                    ))
+                )
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", public_radio)
+                time.sleep(0.3)
+                public_radio.click()
+                print("✓ Changed event to Public")
+        except Exception as e:
+            print(f"⚠ Could not change privacy: {e}")
+ 
+        # ===== SAVE CHANGES =====
+        print("\n=== SAVING CHANGES ===")
+        try:
+            save_button = WebDriverWait(driver, TIMEOUT).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//input[@type='submit'][@class='btn btn-success']"
+                ))
+            )
+            
+            driver.execute_script(
+                "arguments[0].scrollIntoView(true);",
+                save_button
+            )
+            time.sleep(0.5)
+            
+            # Try regular click first
+            try:
+                save_button.click()
+                print("✓ Clicked save button")
+            except Exception:
+                # Fall back to JS click if regular click fails
+                print("⚠ Regular click failed, using JavaScript click")
+                driver.execute_script("arguments[0].click();", save_button)
+                print("✓ Clicked save button via JS")
+                
+        except Exception as e:
+            print(f"✗ Could not find/click save button: {e}")
+            raise
+ 
+        # Wait for redirect or capture an error
         time.sleep(2)
-        
-        # Verify update
+ 
+        # Check for JavaScript alerts
+        try:
+            alert = driver.switch_to.alert
+            alert_text = alert.text
+            print(f"⚠ Alert after save: {alert_text}")
+            alert.accept()
+        except Exception:
+            pass
+ 
+        # Check for any page error messages
+        try:
+            error_msgs = driver.find_elements(By.XPATH, "//*[contains(text(), 'Unable to create event.') or contains(text(), 'Event updated successfully') or contains(text(), 'Invalid date or time format') or contains(text(), 'Event name is required')]")
+            for msg in error_msgs:
+                print(f"Page message: {msg.text}")
+        except Exception:
+            pass
+ 
+        current_url = driver.current_url
+        print(f"Current URL after save: {current_url}")
+        if "dashboard" not in current_url.lower():
+            print("⚠ Did not automatically redirect after save; navigating to dashboard manually")
+            driver.get(f"{BASE_URL}/dashboard")
+            time.sleep(2)
+        else:
+            print("✓ Redirected to dashboard")
+ 
+        # ===== VERIFY UPDATED EVENT =====
+        print("\n=== VERIFYING UPDATED EVENT ===")
         try:
             updated_event = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.XPATH, f"//div[contains(text(), '{EVENT_DATA_UPDATED['name']}')] | //h2[contains(text(), '{EVENT_DATA_UPDATED['name']}')]"))
+                EC.presence_of_element_located(
+                    (By.XPATH, f"//*[contains(text(), '{EVENT_DATA_UPDATED['name']}')]")
+                )  
             )
-            print(f"✓✓✓ Event updated to '{EVENT_DATA_UPDATED['name']}'!")
-        except:
-            print("⚠ Could not verify update")
+            assert updated_event is not None
+            print(f"✓ Found updated event: {EVENT_DATA_UPDATED['name']}")
+        except TimeoutException:
+            print(f"✗ Updated event not found: {EVENT_DATA_UPDATED['name']}")
+            raise
  
+        print(f"\n✓✓✓ EVENT EDIT TEST PASSED ✓✓✓")
+        print(f"Updated event visible as: {EVENT_DATA_UPDATED['name']}")
  
     # ========================================================================
     # TEST 4: Fill Event Tabs
