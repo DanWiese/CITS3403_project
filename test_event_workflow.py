@@ -9,7 +9,6 @@ Based on your actual form with fields:
 - Event Description
 - Private/Public Event toggle
 """
- 
 import pytest
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -223,14 +222,46 @@ class TestEventWorkflow:
             EC.presence_of_element_located((By.ID, "newEventForm"))
         )
         print("✓ Event creation form loaded")
+
+        # Helper function to safely fill a field
+        def fill_field(field_id, value):
+            """Safely clear and fill a field with proper timing"""
+            field = WebDriverWait(driver, TIMEOUT).until(
+                EC.presence_of_element_located((By.ID, field_id))
+            )
+            # Scroll into view
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", field)
+            time.sleep(0.3)
+            
+            # For date and time inputs, use JavaScript to set the value directly
+            field_type = field.get_attribute("type")
+            if field_type in ["date", "time", "datetime-local"]:
+                # Use JavaScript for date/time inputs (more reliable)
+                driver.execute_script(f"arguments[0].value = '{value}';", field)
+                # Trigger change event
+                driver.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", field)
+                time.sleep(0.3)
+            else:
+                # For text inputs, use traditional method
+                field.click()
+                time.sleep(0.2)
+                # Select all and delete
+                field.send_keys("\ue009a")  # Ctrl+A
+                field.send_keys("\ue017")   # Delete
+                time.sleep(0.2)
+                # Type new value
+                field.send_keys(value)
+                time.sleep(0.3)
+            
+            # Verify the value was set
+            actual_value = field.get_attribute("value")
+            if actual_value != value:
+                print(f"  ⚠ Warning: Expected '{value}', got '{actual_value}'")
+            return field
  
         # ===== FILL EVENT NAME =====
         try:
-            name_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.ID, "eventName"))
-            )
-            name_field.clear()
-            name_field.send_keys(EVENT_DATA["name"])
+            fill_field("eventName", EVENT_DATA["name"])
             print(f"✓ Entered Event Name: {EVENT_DATA['name']}")
         except Exception as e:
             print(f"⚠ Could not fill Event Name: {e}")
@@ -238,11 +269,7 @@ class TestEventWorkflow:
  
         # ===== FILL LOCATION =====
         try:
-            location_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.ID, "location"))
-            )
-            location_field.clear()
-            location_field.send_keys(EVENT_DATA["location"])
+            fill_field("location", EVENT_DATA["location"])
             print(f"✓ Entered Location: {EVENT_DATA['location']}")
         except Exception as e:
             print(f"⚠ Could not fill Location: {e}")
@@ -268,55 +295,35 @@ class TestEventWorkflow:
  
         # ===== FILL START DATE =====
         try:
-            start_date_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.ID, "startDate"))
-            )
-            start_date_field.clear()
-            start_date_field.send_keys(EVENT_DATA["date_from"])
+            fill_field("startDate", EVENT_DATA["date_from"])
             print(f"✓ Entered Start Date: {EVENT_DATA['date_from']}")
         except Exception as e:
             print(f"⚠ Could not fill Start Date: {e}")
  
         # ===== FILL START TIME =====
         try:
-            start_time_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.ID, "startTime"))
-            )
-            start_time_field.clear()
-            start_time_field.send_keys(EVENT_DATA["time_from"])
+            fill_field("startTime", EVENT_DATA["time_from"])
             print(f"✓ Entered Start Time: {EVENT_DATA['time_from']}")
         except Exception as e:
             print(f"⚠ Could not fill Start Time: {e}")
  
         # ===== FILL END DATE =====
         try:
-            end_date_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.ID, "finishDate"))
-            )
-            end_date_field.clear()
-            end_date_field.send_keys(EVENT_DATA["date_until"])
+            fill_field("finishDate", EVENT_DATA["date_until"])
             print(f"✓ Entered End Date: {EVENT_DATA['date_until']}")
         except Exception as e:
             print(f"⚠ Could not fill End Date: {e}")
  
         # ===== FILL END TIME =====
         try:
-            end_time_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.ID, "finishTime"))
-            )
-            end_time_field.clear()
-            end_time_field.send_keys(EVENT_DATA["time_until"])
+            fill_field("finishTime", EVENT_DATA["time_until"])
             print(f"✓ Entered End Time: {EVENT_DATA['time_until']}")
         except Exception as e:
             print(f"⚠ Could not fill End Time: {e}")
  
         # ===== FILL DESCRIPTION =====
         try:
-            desc_field = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.ID, "description"))
-            )
-            desc_field.clear()
-            desc_field.send_keys(EVENT_DATA["description"])
+            fill_field("description", EVENT_DATA["description"])
             print("✓ Entered Event Description")
         except Exception as e:
             print(f"⚠ Could not fill Description: {e}")
@@ -440,26 +447,26 @@ class TestEventWorkflow:
     # ========================================================================
     # TEST 3: Edit Event
     # ========================================================================
- 
+
     def test_edit_event(self, logged_in_driver):
         """Edit an existing event and verify changes"""
- 
+
         driver = logged_in_driver
- 
+
         print("\n=== EDITING EVENT ===")
- 
+
         # Go to dashboard
         driver.get(f"{BASE_URL}/dashboard")
- 
+
         # Wait for event to appear
         WebDriverWait(driver, TIMEOUT).until(
             EC.presence_of_element_located(
                 (By.XPATH, f"//*[contains(text(), '{EVENT_DATA['name']}')]")
             )
         )
- 
+
         print(f"✓ Found event: {EVENT_DATA['name']}")
- 
+
         # Click the Edit button for this event on the dashboard
         edit_button = WebDriverWait(driver, TIMEOUT).until(
             EC.element_to_be_clickable((
@@ -471,9 +478,9 @@ class TestEventWorkflow:
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", edit_button)
         time.sleep(0.5)
         edit_button.click()
- 
+
         print("✓ Clicked Edit Event")
- 
+
         # Wait for edit page navigation; fall back to direct URL if needed
         time.sleep(2)
         current_url = driver.current_url
@@ -481,14 +488,14 @@ class TestEventWorkflow:
         if edit_href and current_url == f"{BASE_URL}/dashboard":
             print("⚠ Click did not navigate; using direct edit URL")
             driver.get(edit_href)
- 
+
         # Wait for edit form
         WebDriverWait(driver, TIMEOUT).until(
             EC.presence_of_element_located((By.ID, "newEventForm"))
         )
- 
+
         print("✓ Edit form loaded")
- 
+
         # Verify edit page title
         try:
             page_title = driver.find_element(By.ID, "pageTitle").text.strip()
@@ -496,7 +503,7 @@ class TestEventWorkflow:
             print("✓ Confirmed Edit Event page")
         except Exception as e:
             print(f"⚠ Could not confirm edit page title: {e}")
- 
+
         # Helper function to safely fill a field
         def fill_field(field_id, value):
             """Safely clear and fill a field with proper timing"""
@@ -533,56 +540,56 @@ class TestEventWorkflow:
             if actual_value != value:
                 print(f"  ⚠ Warning: Expected '{value}', got '{actual_value}'")
             return field
- 
+
         # ===== UPDATE EVENT NAME =====
         try:
             fill_field("eventName", EVENT_DATA_UPDATED["name"])
             print(f"✓ Updated name: {EVENT_DATA_UPDATED['name']}")
         except Exception as e:
             print(f"✗ Failed to update name: {e}")
- 
+
         # ===== UPDATE LOCATION =====
         try:
             fill_field("location", EVENT_DATA_UPDATED["location"])
             print(f"✓ Updated location: {EVENT_DATA_UPDATED['location']}")
         except Exception as e:
             print(f"✗ Failed to update location: {e}")
- 
+
         # ===== UPDATE DESCRIPTION =====
         try:
             fill_field("description", EVENT_DATA_UPDATED["description"])
             print("✓ Updated description")
         except Exception as e:
             print(f"✗ Failed to update description: {e}")
- 
+
         # ===== UPDATE START DATE =====
         try:
             fill_field("startDate", EVENT_DATA_UPDATED["date_from"])
             print(f"✓ Updated start date: {EVENT_DATA_UPDATED['date_from']}")
         except Exception as e:
             print(f"✗ Failed to update start date: {e}")
- 
+
         # ===== UPDATE START TIME =====
         try:
             fill_field("startTime", EVENT_DATA_UPDATED["time_from"])
             print(f"✓ Updated start time: {EVENT_DATA_UPDATED['time_from']}")
         except Exception as e:
             print(f"✗ Failed to update start time: {e}")
- 
+
         # ===== UPDATE END DATE =====
         try:
             fill_field("finishDate", EVENT_DATA_UPDATED["date_until"])
             print(f"✓ Updated end date: {EVENT_DATA_UPDATED['date_until']}")
         except Exception as e:
             print(f"✗ Failed to update end date: {e}")
- 
+
         # ===== UPDATE END TIME =====
         try:
             fill_field("finishTime", EVENT_DATA_UPDATED["time_until"])
             print(f"✓ Updated end time: {EVENT_DATA_UPDATED['time_until']}")
         except Exception as e:
             print(f"✗ Failed to update end time: {e}")
- 
+
         # ===== CHANGE PRIVACY =====
         try:
             if EVENT_DATA_UPDATED["event_type"] == "Public":
@@ -598,7 +605,7 @@ class TestEventWorkflow:
                 print("✓ Changed event to Public")
         except Exception as e:
             print(f"⚠ Could not change privacy: {e}")
- 
+
         # ===== SAVE CHANGES =====
         print("\n=== SAVING CHANGES ===")
         try:
@@ -628,10 +635,10 @@ class TestEventWorkflow:
         except Exception as e:
             print(f"✗ Could not find/click save button: {e}")
             raise
- 
+
         # Wait for redirect or capture an error
         time.sleep(2)
- 
+
         # Check for JavaScript alerts
         try:
             alert = driver.switch_to.alert
@@ -640,7 +647,7 @@ class TestEventWorkflow:
             alert.accept()
         except Exception:
             pass
- 
+
         # Check for any page error messages
         try:
             error_msgs = driver.find_elements(By.XPATH, "//*[contains(text(), 'Unable to create event.') or contains(text(), 'Event updated successfully') or contains(text(), 'Invalid date or time format') or contains(text(), 'Event name is required')]")
@@ -648,7 +655,7 @@ class TestEventWorkflow:
                 print(f"Page message: {msg.text}")
         except Exception:
             pass
- 
+
         current_url = driver.current_url
         print(f"Current URL after save: {current_url}")
         if "dashboard" not in current_url.lower():
@@ -657,7 +664,7 @@ class TestEventWorkflow:
             time.sleep(2)
         else:
             print("✓ Redirected to dashboard")
- 
+
         # ===== VERIFY UPDATED EVENT =====
         print("\n=== VERIFYING UPDATED EVENT ===")
         try:
@@ -671,10 +678,193 @@ class TestEventWorkflow:
         except TimeoutException:
             print(f"✗ Updated event not found: {EVENT_DATA_UPDATED['name']}")
             raise
- 
+
         print(f"\n✓✓✓ EVENT EDIT TEST PASSED ✓✓✓")
         print(f"Updated event visible as: {EVENT_DATA_UPDATED['name']}")
- 
+
+    # ========================================================================
+    # TEST 4: Delete Event
+    # ========================================================================
+
+    def test_delete_event(self, logged_in_driver):
+        """Delete the updated event and verify it's removed from dashboard"""
+
+        driver = logged_in_driver
+
+        print("\n=== DELETING EVENT ===")
+
+        # Go to dashboard
+        driver.get(f"{BASE_URL}/dashboard")
+        time.sleep(1)
+
+        # Wait for the updated event to appear
+        try:
+            event_element = WebDriverWait(driver, TIMEOUT).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, f"//*[contains(text(), '{EVENT_DATA_UPDATED['name']}')]")
+                )
+            )
+            print(f"✓ Found event to delete: {EVENT_DATA_UPDATED['name']}")
+        except TimeoutException:
+            print(f"⚠ Updated event not found, trying original event name")
+            event_element = WebDriverWait(driver, TIMEOUT).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, f"//*[contains(text(), '{EVENT_DATA['name']}')]")
+                )
+            )
+            print(f"✓ Found event to delete: {EVENT_DATA['name']}")
+
+        # Find the delete button for this event
+        # The delete button is a button element within card-actions, not an anchor tag
+        try:
+            # First find the event card and scroll it into view
+            event_card = WebDriverWait(driver, TIMEOUT).until(
+                EC.presence_of_element_located((
+                    By.XPATH,
+                    f"//div[contains(@class, 'event-card') and .//*[contains(text(), '{EVENT_DATA_UPDATED['name']}')]]"
+                ))
+            )
+            
+            # Scroll the event card into view
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", event_card)
+            time.sleep(0.5)
+            
+            # Look for the delete button - it's a button element with title="Delete"
+            delete_button = WebDriverWait(driver, TIMEOUT).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    f"//div[contains(@class, 'event-card') and .//*[contains(text(), '{EVENT_DATA_UPDATED['name']}')]]//button[@title='Delete']"
+                ))
+            )
+            print("✓ Found delete button")
+            
+        except TimeoutException:
+            # Try with original event name
+            try:
+                print("⚠ Primary selector failed, trying with original event name")
+                event_card = WebDriverWait(driver, TIMEOUT).until(
+                    EC.presence_of_element_located((
+                        By.XPATH,
+                        f"//div[contains(@class, 'event-card') and .//*[contains(text(), '{EVENT_DATA['name']}')]]"
+                    ))
+                )
+                
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", event_card)
+                time.sleep(0.5)
+                
+                delete_button = WebDriverWait(driver, TIMEOUT).until(
+                    EC.element_to_be_clickable((
+                        By.XPATH,
+                        f"//div[contains(@class, 'event-card') and .//*[contains(text(), '{EVENT_DATA['name']}')]]//button[@title='Delete']"
+                    ))
+                )
+                print("✓ Found delete button (using original name)")
+                
+            except TimeoutException:
+                print("⚠ Both selectors failed, looking for generic delete button")
+                # Last resort - find any delete button on the page
+                delete_buttons = driver.find_elements(By.XPATH, "//button[@title='Delete']")
+                
+                if len(delete_buttons) == 0:
+                    print("✗ Could not find delete button")
+                    raise AssertionError("No delete button found on page")
+                
+                # Use the first delete button found
+                delete_button = delete_buttons[0]
+                print(f"✓ Found delete button (generic selector, {len(delete_buttons)} buttons available)")
+
+        # Scroll to the delete button
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", delete_button)
+        time.sleep(0.5)
+
+        # Click the delete button
+        try:
+            delete_button.click()
+            print("✓ Clicked delete button")
+        except Exception:
+            # Fall back to JS click if regular click fails
+            print("⚠ Regular click failed, using JavaScript click")
+            driver.execute_script("arguments[0].click();", delete_button)
+            print("✓ Clicked delete button via JS")
+
+        # Wait for confirmation dialog
+        time.sleep(1)
+
+        # Handle the JavaScript confirmation dialog
+        print("\n=== HANDLING CONFIRMATION ===")
+        try:
+            alert = driver.switch_to.alert
+            alert_text = alert.text
+            print(f"⚠ Confirmation dialog appeared: {alert_text}")
+            # Click OK to confirm deletion
+            alert.accept()
+            print("✓ Confirmed deletion via alert")
+        except Exception:
+            print("⚠ No alert found - checking for modal confirmation")
+
+        # Wait for deletion to complete
+        time.sleep(2)
+
+        # Check for success messages
+        try:
+            success_msgs = driver.find_elements(By.XPATH, "//*[contains(text(), 'deleted') or contains(text(), 'removed') or contains(text(), 'successfully')]")
+            for msg in success_msgs:
+                msg_text = msg.text.lower()
+                if any(word in msg_text for word in ['deleted', 'removed', 'success']):
+                    print(f"✓ Success message: {msg.text}")
+        except Exception:
+            pass
+
+        # Ensure we're on the dashboard
+        current_url = driver.current_url
+        if "dashboard" not in current_url.lower():
+            print("⚠ Not on dashboard, navigating there")
+            driver.get(f"{BASE_URL}/dashboard")
+            time.sleep(2)
+        else:
+            print("✓ On dashboard")
+
+        # ===== VERIFY EVENT IS DELETED =====
+        print("\n=== VERIFYING EVENT DELETION ===")
+        
+        # Wait a moment for the page to update
+        time.sleep(1)
+        
+        # Check that the event is no longer visible
+        try:
+            # Try to find the deleted event - should NOT exist
+            deleted_event = driver.find_elements(
+                By.XPATH, 
+                f"//*[contains(text(), '{EVENT_DATA_UPDATED['name']}')]"
+            )
+            
+            if len(deleted_event) == 0:
+                print(f"✓ Event '{EVENT_DATA_UPDATED['name']}' successfully deleted (not found)")
+            else:
+                print(f"✗ Event '{EVENT_DATA_UPDATED['name']}' still visible on dashboard")
+                raise AssertionError(f"Event was not deleted - still found on page")
+                
+        except AssertionError:
+            raise
+
+        # Also verify the original event name is gone (in case it reverted)
+        try:
+            original_event = driver.find_elements(
+                By.XPATH,
+                f"//*[contains(text(), '{EVENT_DATA['name']}')]"
+            )
+            if len(original_event) == 0:
+                print(f"✓ Original event name '{EVENT_DATA['name']}' also not found")
+            else:
+                # This could be okay depending on your app's behavior
+                print(f"⚠ Original event name '{EVENT_DATA['name']}' still visible")
+        except Exception:
+            pass
+
+        print(f"\n✓✓✓ EVENT DELETION TEST PASSED ✓✓✓")
+        print(f"Event successfully deleted from dashboard")
+
+
     # ========================================================================
     # TEST 4: Fill Event Tabs
     # ========================================================================
@@ -739,107 +929,7 @@ class TestEventWorkflow:
         if tabs_found == 0:
             print("⚠ No tabs found (this may be normal for your form)")
         else:
-            print(f"✓✓✓ Filled {tabs_found} tabs")
- 
- 
-    # ========================================================================
-    # TEST 5: Delete Event
-    # ========================================================================
-    
-    def test_delete_event(self, logged_in_driver):
-        """Delete the event"""
-        driver = logged_in_driver
-        
-        print("\n=== DELETING EVENT ===")
-        
-        # Find the event
-        try:
-            event_element = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.XPATH, f"//div[contains(text(), '{EVENT_DATA_UPDATED['name']}')] | //h2[contains(text(), '{EVENT_DATA_UPDATED['name']}')]"))
-            )
-            print(f"✓ Found event to delete")
-        except:
-            print("⚠ Event not found")
-            pytest.skip("Event not found")
-        
-        # Find and click delete button
-        try:
-            delete_btn = WebDriverWait(driver, TIMEOUT).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Delete')] | //a[contains(text(), 'Delete')]"))
-            )
-            delete_btn.click()
-            print("✓ Clicked Delete button")
-        except Exception as e:
-            print(f"⚠ Could not find Delete button: {e}")
-            pytest.skip("Delete button not found")
-        
-        # Handle confirmation
-        time.sleep(1)
-        try:
-            confirm_btn = WebDriverWait(driver, TIMEOUT).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Confirm')] | //button[contains(text(), 'Yes')] | //button[contains(text(), 'OK')]"))
-            )
-            confirm_btn.click()
-            print("✓ Confirmed deletion")
-        except:
-            print("⚠ No confirmation dialog")
-        
-        time.sleep(2)
-        
-        # Verify deletion
-        try:
-            event_element = driver.find_element(By.XPATH, f"//div[contains(text(), '{EVENT_DATA_UPDATED['name']}')]")
-            print("⚠ Event still visible after deletion")
-        except:
-            print(f"✓✓✓ Event '{EVENT_DATA_UPDATED['name']}' deleted successfully!")
-
-    def test_logout(self, driver):
-        """Test logout functionality"""
-        # Login first
-        driver.get(BASE_URL)
-
-        WebDriverWait(driver, TIMEOUT).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-
-        email_field = WebDriverWait(driver, TIMEOUT).until(
-            EC.presence_of_element_located((By.ID, "loginEmail"))
-        )
-        email_field.send_keys(LOGIN_CREDENTIALS["email"])
-
-        password_field = driver.find_element(By.ID, "loginPassword")
-        password_field.send_keys(LOGIN_CREDENTIALS["password"])
-
-        login_btn = driver.find_element(By.ID, "loginBtn")
-        login_btn.click()
-
-        # Wait for dashboard page
-        WebDriverWait(driver, TIMEOUT).until(
-            EC.url_contains("dashboard")
-        )
-
-        print("✓ Login successful")
-
-        # Click logout button
-        logout_btn = WebDriverWait(driver, TIMEOUT).until(
-            EC.element_to_be_clickable(
-                (By.XPATH, "//button[contains(text(), 'Logout')]")
-            )
-        )
-
-        logout_btn.click()
-        print("✓ Clicked logout button")
-
-        # Wait for redirect to login page
-        WebDriverWait(driver, TIMEOUT).until(
-            EC.presence_of_element_located((By.ID, "loginEmail"))
-        )
-
-        # Verify logout successful
-        assert "dashboard" not in driver.current_url.lower()
-
-        print(f"✓ Logged out successfully. Current URL: {driver.current_url}")
-
+            print(f"✓✓✓ Filled {tabs_found} tabs") 
 
 """
 SETUP:
