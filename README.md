@@ -6,21 +6,18 @@ The main features of our website allow users to:
 
 - Create accounts/log in and out
 
-- Create public/private events
+- Create/edit public/private events
 
 - Invite friends via invitation link utilising an RSVP function
 
-- Public Events can be followed by any user
+- Multi-user collaboration on expenses and checklists
 
-- Public discussion forums
+- Voting for date options
 
-- Voting system for events with a selection of ideas
+- Public discussion tab
 
-- Holiday event creation, shared calendar and expenses tracker
 
-- Search function for users and public events
-
-Contributors:
+## Contributors:
 | Name | Student Number |
 | --- | --- |
 | Dan Wiese | 23153032 |
@@ -29,11 +26,22 @@ Contributors:
 | Kimi Chong | 23993135 |
 
 
-# Installing and running our website
+## Installing and running our website
 
-pip install -r requirements.txt
+install requirements.txt:
+`pip install -r requirements.txt`
 installs the following:
 - Flask
 - Flask-SQLAlchemy
 - Flask-SocketIO
 - Werkzeug
+
+run app.py:
+`python app.py`
+and click localhost link
+
+run selenium test:
+`pytest test_event_workflow.py::TestEventWorkflow -v -s`
+
+run unit test:
+`python -m unittest discover -s tests -v` or `python -m pytest tests -v`
