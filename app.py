@@ -437,6 +437,8 @@ def render_event_dashboard(event, active_tab='overview', allow_invite_access=Fal
     if event.is_private and not (is_owner or participant or allow_invite_access):
         abort(403)
 
+    can_access_discussion = (not event.is_private) or is_owner or participant is not None
+
     participants = EventParticipant.query.filter_by(event_id=event.id).order_by(EventParticipant.created_at.asc()).all()
     vote_options = EventVoteOption.query.filter_by(event_id=event.id).order_by(EventVoteOption.created_at.asc()).all()
     expenses = EventExpense.query.filter_by(event_id=event.id).order_by(EventExpense.created_at.asc()).all()
@@ -460,6 +462,12 @@ def render_event_dashboard(event, active_tab='overview', allow_invite_access=Fal
         invite = get_or_create_event_invite(event)
         invite_token = invite.token
         invite_link = get_share_url(f'/invite/{invite_token}')
+    else:
+        # allow participants to copy/share an invite link too (owner approval still required for private events)
+        if participant:
+            invite = get_or_create_event_invite(event)
+            invite_token = invite.token
+            invite_link = get_share_url(f'/invite/{invite_token}')
 
     return render_template(
         'EVENT_DASHBOARD_FINAL.html',
@@ -479,6 +487,7 @@ def render_event_dashboard(event, active_tab='overview', allow_invite_access=Fal
         show_join_modal=allow_invite_access and event.is_private and not is_owner and participant is None,
         pending_requests=pending_requests,
         event_is_owner=is_owner,
+        can_access_discussion=can_access_discussion,
     )
 
 def render_event_modification(event):
@@ -796,6 +805,31 @@ def join_event(event_id):
 def request_join_event(token):
     invite = EventInviteToken.query.filter_by(token=token, active=True).first_or_404()
     event = invite.event
+    participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if participant or event.user_id == session['user_id']:
+        return jsonify({'success': False, 'message': 'You are already a participant.'}), 400
+
+    existing_request = EventJoinRequest.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
+    if existing_request and existing_request.status == 'pending':
+        return jsonify({'success': False, 'message': 'Join request already pending.'}), 400
+
+    if existing_request is None:
+        existing_request = EventJoinRequest(event_id=event.id, user_id=session['user_id'], status='pending')
+        db.session.add(existing_request)
+    else:
+        existing_request.status = 'pending'
+
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Request sent to host.'}), 200
+
+
+@app.route('/event-dashboard/<int:event_id>/request-join', methods=['POST'])
+@login_required
+def request_join_event_no_token(event_id):
+    """Allow users to request to join a private event without an invite token.
+    The owner still must approve requests via the existing approve endpoint.
+    """
+    event = Event.query.get_or_404(event_id)
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
     if participant or event.user_id == session['user_id']:
         return jsonify({'success': False, 'message': 'You are already a participant.'}), 400

@@ -20,16 +20,37 @@ async function shareEventInvite() {
         }
     }
 
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (navigator.clipboard && window.isSecureContext) {
         try {
             await navigator.clipboard.writeText(inviteUrl);
             alert('Invite link copied. Share it with participants.');
             return;
         } catch (error) {
-            // Fall through to prompt fallback.
+            // Fall through to legacy fallback.
         }
     }
 
+    const tempInput = document.createElement('textarea');
+    tempInput.value = inviteUrl;
+    tempInput.setAttribute('readonly', 'readonly');
+    tempInput.style.position = 'fixed';
+    tempInput.style.opacity = '0';
+    document.body.appendChild(tempInput);
+    tempInput.focus();
+    tempInput.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (copied) {
+            alert('Invite link copied. Share it with participants.');
+            document.body.removeChild(tempInput);
+            return;
+        }
+    } catch (error) {
+        // Ignore and use prompt fallback below.
+    }
+
+    document.body.removeChild(tempInput);
     prompt('Copy this invite link:', inviteUrl);
 }
 
