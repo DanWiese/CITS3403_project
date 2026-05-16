@@ -29,7 +29,7 @@ The main features of our website allow users to:
 ## Installing and running our website
 
 install requirements.txt:
-pip install -r requirements.txt
+`pip install -r requirements.txt`
 installs the following:
 - Flask
 - Flask-SQLAlchemy
@@ -37,5 +37,11 @@ installs the following:
 - Werkzeug
 
 run app.py:
-python app.py
+`python app.py`
 and click localhost link
+
+run selenium test:
+`pytest test_event_workflow.py::TestEventWorkflow -v -s`
+
+run unit test:
+`python -m unittest discover -s tests -v`
