@@ -1,8 +1,6 @@
 """
-Customized Event Management Test Suite for Your Form
 Tests: Login → Create Event → Edit Event → Fill Tabs → Delete Event → Logout
- 
-Based on your actual form with fields:
+
 - Event Name
 - Location
 - Date and Time (From/Until with date and time inputs)
@@ -20,7 +18,7 @@ import time
 from selenium.common.exceptions import TimeoutException
  
 
-# CONFIGURATION - UPDATE THESE FOR YOUR WEBSITE
+# CONFIGURATION
  
 BASE_URL = "http://localhost:5001"
 LOGIN_CREDENTIALS = {
@@ -132,7 +130,7 @@ def logged_in_driver(driver):
     
     yield driver
     
-    # Cleanup: Logout (optional - tests may have already logged out)
+    # Cleanup: Logout
     try:
         logout_button = WebDriverWait(driver, SHORT_WAIT).until(
             EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Logout')] | //a[contains(text(), 'Logout')]"))
@@ -1173,9 +1171,9 @@ class TestEventWorkflow:
 SETUP:
 1. pip install selenium webdriver-manager pytest
 2. Run all tests:
-   pytest test_event_workflow.py -v -s
+   pytest tests/test_event_workflow.py -v -s
 4. Run specific test:
-   pytest test_event_workflow.py::TestEventWorkflow::test_create_event -v -s
+   pytest tests/test_event_workflow.py::TestEventWorkflow::test_create_event -v -s
 TESTS INCLUDED:
 ✓ test_login - Login to website
 ✓ test_create_event - Fill and submit the Create Event form
