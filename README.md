@@ -41,7 +41,7 @@ run app.py:
 and click localhost link
 
 run selenium test:
-`pytest test_event_workflow.py::TestEventWorkflow -v -s`
+`pytest tests/test_event_workflow.py::TestEventWorkflow -v -s`
 
 run unit test:
 `python -m unittest discover -s tests -v` or `python -m pytest tests -v`

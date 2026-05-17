@@ -599,7 +599,8 @@
                 {% if event_is_owner %}
                 <div class="participants-actions">
                     <form method="get" action="{{ url_for('edit_event', event_id=event.id) }}">
-                        <button class="button-secondary" type="submit">Edit Event</button>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button class="button-primary" type="submit">Edit Event</button>
                     </form>
                 </div>
                 {% endif %}
@@ -614,11 +615,130 @@
         <div id="participants" class="card {% if active_tab == 'participants' %}active{% endif %}">
             <div class="section-heading">
                 <h2>Participants</h2>
-                <form method="post" action="{{ url_for('request_join_event', token=invite_token) }}" class="inline-form" style="margin-bottom: 0;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button class="button-primary" type="submit">+ Request to Join</button>
-                </form>
+                <div style="margin-bottom:0; display:flex; gap:8px; align-items:center;">
+                    {# Owner controls: Add Participant button only visible to owner #}
+                    {% if event_is_owner or current_participant %}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button id="openAddParticipant" class="button-primary" type="button">+ Add Participant</button>
+                    {% endif %}
+
+                    {# Non-owner: show join/request depending on event privacy and participant status #}
+                    {% if not event_is_owner %}
+                        {% if current_participant %}
+                            <div class="participant-pill" style="font-weight:600;">You're a participant</div>
+                        {% else %}
+                            {% if event.is_private %}
+                                {% if invite_token %}
+                                    <form method="post" action="{{ url_for('request_join_event', token=invite_token) }}" class="inline-form join-request-form" style="margin-bottom: 0;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button class="button-primary" type="submit">+ Request to Join</button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{{ url_for('request_join_event_no_token', event_id=event.id) }}" class="inline-form join-request-form" style="margin-bottom: 0;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button class="button-primary" type="submit">+ Request to Join</button>
+                                    </form>
+                                {% endif %}
+                            {% else %}
+                                <form method="post" action="{{ url_for('join_event', event_id=event.id) }}" class="inline-form" style="margin-bottom: 0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button class="button-primary" type="submit">+ Join Event</button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <!-- Add Participant Modal (owner only) -->
+                <div id="addParticipantModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1200; align-items:center; justify-content:center;">
+                    <div style="background:var(--surface); padding:20px; border-radius:12px; width:360px; max-width:90%;">
+                        <h3 style="margin:0 0 12px;">Share Event</h3>
+                        <p style="margin:0 0 12px; color:var(--text-muted);">Copy the link below to invite people. For private events, recipients will need owner approval when they request to join.</p>
+                        {% if share_url %}
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <input id="shareLinkInput" type="text" readonly value="{{ share_url }}" style="flex:1; padding:10px; border:1px solid var(--border); border-radius:8px;">
+                                <button id="copyShareLink" type="button" class="button-primary">Copy</button>
+                            </div>
+                            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+                                <button type="button" id="closeShareModal" class="button-secondary" style="background:var(--surface-alt); border:1px solid var(--border);">Close</button>
+                            </div>
+                        {% else %}
+                            <p style="margin:0; color:var(--text-muted);">No invite link available yet. Open Edit Event to generate one.</p>
+                            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+                                <button type="button" id="closeShareModal" class="button-secondary" style="background:var(--surface-alt); border:1px solid var(--border);">Close</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <script>
+                    (function(){
+                        const openBtn = document.getElementById('openAddParticipant');
+                        const modal = document.getElementById('addParticipantModal');
+                        const closeBtn = document.getElementById('closeShareModal');
+                        const copyBtn = document.getElementById('copyShareLink');
+                        const shareInput = document.getElementById('shareLinkInput');
+
+                        if (openBtn) {
+                            openBtn.addEventListener('click', () => {
+                                modal.style.display = 'flex';
+                            });
+                        }
+
+                        if (closeBtn) {
+                            closeBtn.addEventListener('click', () => {
+                                modal.style.display = 'none';
+                            });
+                        }
+
+                        if (copyBtn && shareInput) {
+                            copyBtn.addEventListener('click', async () => {
+                                try {
+                                    if (navigator.clipboard && window.isSecureContext) {
+                                        await navigator.clipboard.writeText(shareInput.value);
+                                    } else {
+                                        shareInput.removeAttribute('readonly');
+                                        shareInput.select();
+                                        shareInput.setSelectionRange(0, shareInput.value.length);
+                                        const copied = document.execCommand('copy');
+                                        shareInput.setAttribute('readonly', 'readonly');
+                                        if (!copied) {
+                                            throw new Error('Copy command failed');
+                                        }
+                                    }
+                                    copyBtn.textContent = 'Copied';
+                                    setTimeout(() => copyBtn.textContent = 'Copy', 1200);
+                                } catch (err) {
+                                    prompt('Copy this invite link:', shareInput.value);
+                                }
+                            });
+                        }
+                    })();
+                </script>
             </div>
+            {% if event_is_owner and pending_requests %}
+            <div style="margin-bottom: 20px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface);">
+                <h3 style="margin: 0 0 12px;">Pending Join Requests</h3>
+                <div style="display: grid; gap: 10px;">
+                    {% for request in pending_requests %}
+                    <div class="option-item" style="align-items: center;">
+                        <div class="option-info">
+                            <p class="option-title" style="margin: 0;">{{ request.user.username }}</p>
+                            <p class="option-subtitle" style="margin: 4px 0 0;">Requested {{ request.created_at|awst_datetime }}</p>
+                        </div>
+                        <div class="option-actions" style="display: flex; gap: 8px;">
+                            <form method="post" action="{{ url_for('approve_join_request', event_id=event.id, request_id=request.id) }}">
+                                <button class="button-primary" type="submit">Approve</button>
+                            </form>
+                            <form method="post" action="{{ url_for('reject_join_request', event_id=event.id, request_id=request.id) }}">
+                                <button class="button-secondary" type="submit">Reject</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
             {% if participants %}
             <div class="participant-list">
                 {% for participant in participants %}
@@ -735,7 +855,7 @@
         </div>
 
         <!-- DISCUSSION TAB -->
-        <div id="discussion" class="card {% if active_tab == 'discussion' %}active{% endif %}" data-event-id="{{ event.id }}" data-share-url="{{ share_url or '' }}" data-invite-token="{{ invite_token or '' }}" data-request-url="{{ url_for('request_join_event', token=invite_token) if invite_token else '' }}">
+        <div id="discussion" class="card {% if active_tab == 'discussion' %}active{% endif %}" data-event-id="{{ event.id }}" data-share-url="{{ share_url or '' }}" data-invite-token="{{ invite_token or '' }}" data-request-url="{{ url_for('request_join_event', token=invite_token) if invite_token else '' }}" data-can-access-discussion="{{ 'true' if can_access_discussion else 'false' }}">
             <div class="section-heading">
                 <h2>Discussion</h2>
                 <form id="discussionForm" method="post" action="{{ url_for('add_discussion_message', event_id=event.id) }}" class="inline-form" style="margin-bottom: 0;">
@@ -744,15 +864,19 @@
                     <button class="button-primary" type="submit">+ Post Message</button>
                 </form>
             </div>
-            <p id="discussionEmptyState" class="empty-state" {% if discussion_messages %}style="display:none;"{% endif %}>No discussion messages yet. Start the conversation above.</p>
-            <div id="discussionMessages" class="message-list" {% if not discussion_messages %}style="display:none;"{% endif %}>
-                {% for message in discussion_messages %}
-                <div class="message-item">
-                    <p class="message-meta">{{ message.user.username }} • {{ message.created_at|awst_datetime }}</p>
-                    <p class="message-body">{{ message.content }}</p>
+            {% if can_access_discussion %}
+                <p id="discussionEmptyState" class="empty-state" {% if discussion_messages %}style="display:none;"{% endif %}>No discussion messages yet. Start the conversation above.</p>
+                <div id="discussionMessages" class="message-list" {% if not discussion_messages %}style="display:none;"{% endif %}>
+                    {% for message in discussion_messages %}
+                    <div class="message-item">
+                        <p class="message-meta">{{ message.user.username }} • {{ message.created_at|awst_datetime }}</p>
+                        <p class="message-body">{{ message.content }}</p>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
+            {% else %}
+                <p class="empty-state">Join the event to access discussion.</p>
+            {% endif %}
         </div>
 
     </main>
@@ -808,6 +932,7 @@
         const discussionInput = document.getElementById('discussionInput');
         const discussionMessages = document.getElementById('discussionMessages');
         const discussionEmptyState = document.getElementById('discussionEmptyState');
+        const canAccessDiscussion = document.getElementById('discussion').dataset.canAccessDiscussion === 'true';
 
         function appendDiscussionMessage(message) {
             const item = document.createElement('div');
@@ -829,31 +954,80 @@
             discussionEmptyState.style.display = 'none';
         }
 
-        const csrfToken = "{{ csrf_token() }}";
-        const discussionSocket = io();
-        discussionSocket.on('connect', () => {
-            discussionSocket.emit('join_event_room', { event_id: currentEventId, csrf_token: csrfToken });
-        });
-
-        discussionSocket.on('new_discussion_message', appendDiscussionMessage);
-        discussionSocket.on('discussion_error', (payload) => {
-            if (payload && payload.message) {
-                alert(payload.message);
-            }
-        });
-
-        discussionForm.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const content = discussionInput.value.trim();
-            if (!content) {
-                return;
-            }
-            discussionSocket.emit('post_discussion_message', {
-                event_id: currentEventId,
-                content: content,
-                csrf_token: csrfToken,
+        if (canAccessDiscussion) {
+            const csrfToken = "{{ csrf_token() }}";
+            const discussionSocket = io();
+            discussionSocket.on('connect', () => {
+                discussionSocket.emit('join_event_room', { event_id: currentEventId });
             });
-            discussionInput.value = '';
+
+            discussionSocket.on('new_discussion_message', appendDiscussionMessage);
+            discussionSocket.on('discussion_error', (payload) => {
+                if (payload && payload.message) {
+                    alert(payload.message);
+                }
+            });
+
+            discussionForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const content = discussionInput.value.trim();
+                if (!content) {
+                    return;
+                }
+                discussionSocket.emit('post_discussion_message', {
+                    event_id: currentEventId,
+                    content: content,
+                    csrf_token: csrfToken,
+            });
+                discussionInput.value = '';
+            });
+        }
+
+        document.querySelectorAll('.join-request-form').forEach((form) => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const submitButton = form.querySelector('button[type="submit"]');
+                const originalLabel = submitButton ? submitButton.textContent : '';
+                let requestSucceeded = false;
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Sending...';
+                }
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok || !result.success) {
+                        alert(result.message || 'Unable to send join request.');
+                        return;
+                    }
+
+                    alert('Request sent to the host. You will be added after approval.');
+                    requestSucceeded = true;
+                    if (submitButton) {
+                        submitButton.textContent = 'Requested';
+                    }
+                } catch (error) {
+                    console.error('Failed to send join request:', error);
+                    alert('Unable to send join request.');
+                } finally {
+                    if (submitButton && !requestSucceeded) {
+                        submitButton.disabled = false;
+                        if (submitButton.textContent === 'Sending...' && originalLabel) {
+                            submitButton.textContent = originalLabel;
+                        }
+                    }
+                }
+            });
         });
     </script>
 </body>
