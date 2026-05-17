@@ -958,7 +958,7 @@
             const csrfToken = "{{ csrf_token() }}";
             const discussionSocket = io();
             discussionSocket.on('connect', () => {
-                discussionSocket.emit('join_event_room', { event_id: currentEventId });
+                discussionSocket.emit('join_event_room', { event_id: currentEventId, csrf_token: csrfToken });
             });
 
             discussionSocket.on('new_discussion_message', appendDiscussionMessage);
@@ -977,8 +977,8 @@
                 discussionSocket.emit('post_discussion_message', {
                     event_id: currentEventId,
                     content: content,
-                    csrf_token: csrfToken,
-            });
+                    csrf_token: csrfToken
+                });
                 discussionInput.value = '';
             });
         }
