@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_socketio import SocketIO, join_room, emit
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import generate_csrf, validate_csrf
 from functools import wraps
 import json
 import os
@@ -35,6 +37,7 @@ metadata_obj = MetaData(naming_convention={
 db = SQLAlchemy(app, metadata=metadata_obj)
 migrate = Migrate(app, db)
 socketio = SocketIO(app, async_mode='threading')
+csrf = CSRFProtect(app)
 
 def utc_now():
     return datetime.utcnow()
@@ -414,7 +417,6 @@ def get_or_create_event_invite(event):
     invite = EventInviteToken.query.filter_by(event_id=event.id, active=True).order_by(EventInviteToken.created_at.desc()).first()
     if invite is not None:
         return invite
-
     while True:
         token = secrets.token_urlsafe(16)
         invite = EventInviteToken(event_id=event.id, token=token)
@@ -424,6 +426,26 @@ def get_or_create_event_invite(event):
             return invite
         except IntegrityError:
             db.session.rollback()
+
+        
+# Make CSRF token available in Jinja templates via `csrf_token()`
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf)
+
+def require_csrf():
+    token = request.form.get('csrf_token')
+    if not token:
+        data = request.get_json(silent=True)
+        if isinstance(data, dict):
+            token = data.get('csrf_token')
+    if not token:
+        token = request.headers.get('X-CSRFToken') or request.headers.get('X-CSRF-Token') or request.cookies.get('csrf_token')
+    try:
+        validate_csrf(token)
+        return True
+    except Exception:
+        return False
 
 
 def render_event_dashboard(event, active_tab='overview', allow_invite_access=False, invite_token=None):
@@ -460,6 +482,13 @@ def render_event_dashboard(event, active_tab='overview', allow_invite_access=Fal
         invite = get_or_create_event_invite(event)
         invite_token = invite.token
         invite_link = get_share_url(f'/invite/{invite_token}')
+    else:
+        # allow participants to copy/share an invite link too (owner approval still required for private events)
+        if participant:
+            invite = get_or_create_event_invite(event)
+            invite_token = invite.token
+            invite_link = get_share_url(f'/invite/{invite_token}')
+            
 
     return render_template(
         'EVENT_DASHBOARD_FINAL.html',
@@ -509,6 +538,9 @@ def index():
 def login_page():
     """Login page"""
     if request.method == 'POST':
+        if not require_csrf():
+            return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
@@ -527,6 +559,9 @@ def login_page():
 @app.route('/signup', methods=['POST'])
 def signup():
     """Handle user signup"""
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     data = request.get_json()
     username = data.get('username')
     email = data.get('email')
@@ -629,6 +664,9 @@ def event_dashboard(event_id):
 @app.route('/events/<int:event_id>/delete', methods=['POST'])
 @login_required
 def delete_event(event_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     if event.user_id != session['user_id']:
         abort(403)
@@ -665,8 +703,10 @@ def edit_event(event_id):
 @login_required
 def create_event():
     """Create a new event from the event creation form"""
-    data = request.get_json(silent=True) or request.form
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
 
+    data = request.get_json(silent=True) or request.form
     title = (data.get('title') or '').strip()
     location = (data.get('location') or '').strip()
     description = (data.get('description') or '').strip()
@@ -729,8 +769,10 @@ def modify_event(event_id):
     if session['user_id'] != event.user_id:
         return jsonify({'success': False, 'message': 'Only the event owner may edit an event'}), 400
 
-    data = request.get_json(silent=True) or request.form
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
 
+    data = request.get_json(silent=True) or request.form
     title = (data.get('title') or '').strip()
     location = (data.get('location') or '').strip()
     description = (data.get('description') or '').strip()
@@ -780,6 +822,9 @@ def modify_event(event_id):
 @app.route('/event-dashboard/<int:event_id>/join', methods=['POST'])
 @login_required
 def join_event(event_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
     if event.is_private and event.user_id != session['user_id'] and participant is None:
@@ -794,6 +839,9 @@ def join_event(event_id):
 @app.route('/invite/<string:token>/request-join', methods=['POST'])
 @login_required
 def request_join_event(token):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     invite = EventInviteToken.query.filter_by(token=token, active=True).first_or_404()
     event = invite.event
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
@@ -817,6 +865,9 @@ def request_join_event(token):
 @app.route('/event-dashboard/<int:event_id>/join-requests/<int:request_id>/approve', methods=['POST'])
 @login_required
 def approve_join_request(event_id, request_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     if event.user_id != session['user_id']:
         abort(403)
@@ -835,6 +886,9 @@ def approve_join_request(event_id, request_id):
 @app.route('/event-dashboard/<int:event_id>/join-requests/<int:request_id>/reject', methods=['POST'])
 @login_required
 def reject_join_request(event_id, request_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     if event.user_id != session['user_id']:
         abort(403)
@@ -848,6 +902,9 @@ def reject_join_request(event_id, request_id):
 @app.route('/event-dashboard/<int:event_id>/vote-options', methods=['POST'])
 @login_required
 def add_vote_option(event_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
     if event.is_private and event.user_id != session['user_id'] and participant is None:
@@ -862,6 +919,9 @@ def add_vote_option(event_id):
 @app.route('/event-dashboard/<int:event_id>/vote/<int:option_id>', methods=['POST'])
 @login_required
 def cast_vote(event_id, option_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     option = EventVoteOption.query.filter_by(id=option_id, event_id=event.id).first_or_404()
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
@@ -884,6 +944,9 @@ def cast_vote(event_id, option_id):
 @app.route('/event-dashboard/<int:event_id>/expenses', methods=['POST'])
 @login_required
 def add_expense(event_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
     if event.is_private and event.user_id != session['user_id'] and participant is None:
@@ -903,6 +966,9 @@ def add_expense(event_id):
 @app.route('/event-dashboard/<int:event_id>/checklist', methods=['POST'])
 @login_required
 def add_checklist_item(event_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
     if event.is_private and event.user_id != session['user_id'] and participant is None:
@@ -917,6 +983,9 @@ def add_checklist_item(event_id):
 @app.route('/event-dashboard/<int:event_id>/discussion', methods=['POST'])
 @login_required
 def add_discussion_message(event_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()
     if event.is_private and event.user_id != session['user_id'] and participant is None:
@@ -943,6 +1012,14 @@ def handle_join_event_room(data):
         emit('discussion_error', {'message': 'Authentication required.'})
         return
 
+    # Validate CSRF token from payload, header, or cookie
+    csrf_token = (data or {}).get('csrf_token') or request.headers.get('X-CSRFToken') or request.cookies.get('csrf_token')
+    try:
+        validate_csrf(csrf_token)
+    except Exception:
+        emit('discussion_error', {'message': 'CSRF token missing or invalid.'})
+        return
+
     event_id_raw = (data or {}).get('event_id')
     try:
         event_id = int(event_id_raw)
@@ -965,6 +1042,14 @@ def handle_post_discussion_message(data):
         return
 
     payload = data or {}
+    # Validate CSRF token from payload, header, or cookie
+    csrf_token = payload.get('csrf_token') or request.headers.get('X-CSRFToken') or request.cookies.get('csrf_token')
+    try:
+        validate_csrf(csrf_token)
+    except Exception:
+        emit('discussion_error', {'message': 'CSRF token missing or invalid.'})
+        return
+
     event_id_raw = payload.get('event_id')
     content = (payload.get('content') or '').strip()
 
@@ -999,6 +1084,9 @@ def handle_post_discussion_message(data):
 @app.route('/event-dashboard/<int:event_id>/checklist/<int:item_id>/toggle', methods=['POST'])
 @login_required
 def toggle_checklist_item(event_id, item_id):
+    if not require_csrf():
+        return jsonify({'success': False, 'message': 'CSRF token missing or invalid.'}), 400
+
     event = Event.query.get_or_404(event_id)
     item = EventChecklistItem.query.filter_by(id=item_id, event_id=event.id).first_or_404()
     participant = EventParticipant.query.filter_by(event_id=event.id, user_id=session['user_id']).first()

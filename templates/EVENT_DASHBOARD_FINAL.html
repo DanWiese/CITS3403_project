@@ -615,6 +615,7 @@
             <div class="section-heading">
                 <h2>Participants</h2>
                 <form method="post" action="{{ url_for('request_join_event', token=invite_token) }}" class="inline-form" style="margin-bottom: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button class="button-primary" type="submit">+ Request to Join</button>
                 </form>
             </div>
@@ -637,6 +638,7 @@
             <div class="section-heading">
                 <h2>Date Options</h2>
                 <form method="post" action="{{ url_for('add_vote_option', event_id=event.id) }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="text" name="title" placeholder="Add date option" required>
                     <button class="button-primary" type="submit">+ Suggest Date</button>
                 </form>
@@ -652,6 +654,7 @@
                     <div class="option-actions">
                         <div class="vote-pill">{{ option.votes|length }} <span>votes</span></div>
                         <form method="post" action="{{ url_for('cast_vote', event_id=event.id, option_id=option.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button class="vote-button" type="submit">
                                 {% if current_vote and current_vote.option_id == option.id %}👍 Voted{% else %}👍 Vote{% endif %}
                             </button>
@@ -671,6 +674,7 @@
                 <h2>Expenses</h2>
                 <div class="total-pill">Running Total: ${{ '%.2f'|format(expense_total) }}</div>
                 <form method="post" action="{{ url_for('add_expense', event_id=event.id) }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="text" name="title" placeholder="Expense name" required>
                     <input type="number" name="amount" step="0.01" min="0" placeholder="Amount" required>
                     <button class="button-primary" type="submit">+ Add Expense</button>
@@ -700,6 +704,7 @@
             <div class="section-heading">
                 <h2>Checklist</h2>
                 <form method="post" action="{{ url_for('add_checklist_item', event_id=event.id) }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="text" name="title" placeholder="Checklist item" required>
                     <button class="button-primary" type="submit">+ Add Item</button>
                 </form>
@@ -714,6 +719,7 @@
                     </div>
                     <div class="option-actions">
                         <form method="post" action="{{ url_for('toggle_checklist_item', event_id=event.id, item_id=item.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <label class="check-toggle">
                                 <input type="checkbox" {% if item.completed %}checked{% endif %} onchange="this.form.submit()">
                                 Done
@@ -733,6 +739,7 @@
             <div class="section-heading">
                 <h2>Discussion</h2>
                 <form id="discussionForm" method="post" action="{{ url_for('add_discussion_message', event_id=event.id) }}" class="inline-form" style="margin-bottom: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input id="discussionInput" type="text" name="content" placeholder="Write a message" required>
                     <button class="button-primary" type="submit">+ Post Message</button>
                 </form>
@@ -822,9 +829,10 @@
             discussionEmptyState.style.display = 'none';
         }
 
+        const csrfToken = "{{ csrf_token() }}";
         const discussionSocket = io();
         discussionSocket.on('connect', () => {
-            discussionSocket.emit('join_event_room', { event_id: currentEventId });
+            discussionSocket.emit('join_event_room', { event_id: currentEventId, csrf_token: csrfToken });
         });
 
         discussionSocket.on('new_discussion_message', appendDiscussionMessage);
@@ -843,6 +851,7 @@
             discussionSocket.emit('post_discussion_message', {
                 event_id: currentEventId,
                 content: content,
+                csrf_token: csrfToken,
             });
             discussionInput.value = '';
         });

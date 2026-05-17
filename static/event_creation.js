@@ -36,6 +36,7 @@ async function submission(event) {
     }
 
     const privacyChoice = document.querySelector('input[name="privacy"]:checked');
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
 
     const payload = {
         title: document.getElementById("eventName").value.trim(),
@@ -53,7 +54,8 @@ async function submission(event) {
         const response = await fetch("/events", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                'X-CSRFToken': csrfToken
             },
             body: JSON.stringify(payload)
         });
@@ -77,7 +79,8 @@ async function submission(event) {
         const response = await fetch(url, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                'X-CSRFToken': csrfToken
             },
             body: JSON.stringify(payload)
         });
