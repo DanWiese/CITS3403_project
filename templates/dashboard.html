@@ -210,7 +210,9 @@
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
               </button>
-              <form id="delete-event-form-{{ event.id }}" action="{{ url_for('delete_event', event_id=event.id) }}" method="post" style="display: none;"></form>
+              <form id="delete-event-form-{{ event.id }}" action="{{ url_for('delete_event', event_id=event.id) }}" method="post" style="display: none;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              </form>
             </div>
             {% endif %}
           </div>
